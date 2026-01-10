@@ -174,7 +174,7 @@ export default function CheckInInterface() {
 
     return (
         <PermissionGuard permission="mark_presence">
-            <div className="p-8 max-w-6xl mx-auto">
+            <div className="p-2 md:p-8 max-w-6xl mx-auto">
                 {/* Header */}
                 <header className="mb-8">
                     <div className="flex items-center gap-3 mb-2">

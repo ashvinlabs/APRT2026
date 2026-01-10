@@ -3,7 +3,7 @@ import PermissionGuard from '@/components/PermissionGuard';
 
 export default function VotersPage() {
     return (
-        <main className="p-8">
+        <main>
             <VoterManagement />
         </main>
     );

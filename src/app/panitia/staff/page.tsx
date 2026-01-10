@@ -10,7 +10,7 @@ import PermissionGuard from '@/components/PermissionGuard';
 export default function StaffPage() {
     return (
         <PermissionGuard permission="view_logs">
-            <main className="p-8 max-w-6xl mx-auto">
+            <main className="p-2 md:p-8 max-w-6xl mx-auto">
                 <div className="mb-8">
                     <h1 className="text-4xl font-black text-slate-900 tracking-tight">Manajemen <span className="text-primary">Tim & Roles</span></h1>
                     <p className="text-slate-500 font-medium mt-2">Kelola persetujuan petugas baru, pengaturan role, dan pantau log aktivitas sistem.</p>
