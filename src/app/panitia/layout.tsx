@@ -10,9 +10,9 @@ export default function PanitiaLayout({
 }) {
     return (
         <SidebarProvider>
-            <div style={{ display: 'flex', minHeight: '100vh' }}>
+            <div className="flex min-h-screen bg-[#fcfcfc]">
                 <Sidebar />
-                <main style={{ flex: 1, backgroundColor: 'var(--background)', overflowX: 'hidden' }}>
+                <main className="flex-1 overflow-x-hidden">
                     {children}
                 </main>
             </div>

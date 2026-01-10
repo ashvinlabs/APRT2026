@@ -164,15 +164,24 @@ export default function VoterManagement() {
             {/* Page Header */}
             <header className="flex flex-col md:flex-row justify-between items-center gap-6 mb-12 pb-8 border-b border-slate-200">
                 <div>
-                    <h1 className="text-4xl font-black text-slate-900 tracking-tight">Manajemen <span className="text-primary">Pemilih</span></h1>
-                    <p className="text-slate-500 font-medium mt-1">Kelola data DPT, verifikasi kehadiran, dan cetak undangan warga.</p>
+                    <h1 className="text-4xl font-black text-slate-900 tracking-tight">
+                        {user ? 'Manajemen ' : 'Daftar '}
+                        <span className="text-primary">Pemilih</span>
+                    </h1>
+                    <p className="text-slate-500 font-medium mt-1">
+                        {user
+                            ? 'Kelola data DPT, verifikasi kehadiran, dan cetak undangan warga.'
+                            : 'Lihat Daftar Pemilih Tetap (DPT) Pemilu RT 12 Pelem Kidul.'}
+                    </p>
                 </div>
                 <div className="flex gap-3">
-                    <Button variant="outline" onClick={exportToCSV} className="rounded-2xl h-12 px-6 font-bold shadow-sm hover:bg-slate-50 transition-all border-slate-200">
-                        <Download className="mr-2 h-5 w-5 text-emerald-500" />
-                        Export CSV
-                    </Button>
-                    {(hasPermission('manage_voters') || hasPermission('edit_voters')) && (
+                    {user && (
+                        <Button variant="outline" onClick={exportToCSV} className="rounded-2xl h-12 px-6 font-bold shadow-sm hover:bg-slate-50 transition-all border-slate-200">
+                            <Download className="mr-2 h-5 w-5 text-emerald-500" />
+                            Export CSV
+                        </Button>
+                    )}
+                    {user && (hasPermission('manage_voters') || hasPermission('edit_voters')) && (
                         <>
                             <Button variant="outline" onClick={() => setIsImportModalOpen(true)} className="rounded-2xl h-12 px-6 font-bold shadow-sm hover:bg-slate-50 transition-all border-slate-200">
                                 <FileUp className="mr-2 h-5 w-5 text-indigo-500" />
@@ -280,36 +289,38 @@ export default function VoterManagement() {
                                     </div>
                                 </div>
 
-                                <div className="grid grid-cols-2 gap-3">
-                                    {isRegistrationOpen && (
-                                        <Button
-                                            variant={voter.is_present ? "outline" : "default"}
-                                            disabled={voter.is_present && !hasPermission('manage_voters')} // Officers can't uncheck
-                                            onClick={() => togglePresence(voter.id, voter.is_present)}
-                                            className={cn(
-                                                "rounded-2xl font-black text-xs uppercase tracking-widest h-12 transition-all",
-                                                voter.is_present
-                                                    ? "border-rose-200 text-rose-500 hover:bg-rose-50 hover:text-rose-600"
-                                                    : "bg-emerald-600 hover:bg-emerald-700 shadow-lg shadow-emerald-200 hover:scale-105",
-                                                voter.is_present && !hasPermission('manage_voters') && "opacity-50 cursor-not-allowed group-hover:opacity-50 grayscale"
-                                            )}
-                                        >
-                                            {voter.is_present ? (
-                                                <><XCircle className="mr-2 h-4 w-4" /> Hadir</>
-                                            ) : (
-                                                <><CheckCircle2 className="mr-2 h-4 w-4" /> Tandai Hadir</>
-                                            )}
-                                        </Button>
-                                    )}
-                                    {hasPermission('manage_invitations') && (
-                                        <Button variant="secondary" className={cn(
-                                            "rounded-2xl border-none bg-slate-50 text-slate-500 font-black text-xs uppercase tracking-widest h-12 hover:bg-primary/10 hover:text-primary transition-all",
-                                            !isRegistrationOpen && "col-span-2"
-                                        )}>
-                                            <Printer className="mr-2 h-4 w-4" /> Undangan
-                                        </Button>
-                                    )}
-                                </div>
+                                {user && (
+                                    <div className="grid grid-cols-2 gap-3">
+                                        {isRegistrationOpen && (
+                                            <Button
+                                                variant={voter.is_present ? "outline" : "default"}
+                                                disabled={voter.is_present && !hasPermission('manage_voters')} // Officers can't uncheck
+                                                onClick={() => togglePresence(voter.id, voter.is_present)}
+                                                className={cn(
+                                                    "rounded-2xl font-black text-xs uppercase tracking-widest h-12 transition-all",
+                                                    voter.is_present
+                                                        ? "border-rose-200 text-rose-500 hover:bg-rose-50 hover:text-rose-600"
+                                                        : "bg-emerald-600 hover:bg-emerald-700 shadow-lg shadow-emerald-200 hover:scale-105",
+                                                    voter.is_present && !hasPermission('manage_voters') && "opacity-50 cursor-not-allowed group-hover:opacity-50 grayscale"
+                                                )}
+                                            >
+                                                {voter.is_present ? (
+                                                    <><XCircle className="mr-2 h-4 w-4" /> Hadir</>
+                                                ) : (
+                                                    <><CheckCircle2 className="mr-2 h-4 w-4" /> Tandai Hadir</>
+                                                )}
+                                            </Button>
+                                        )}
+                                        {hasPermission('manage_invitations') && (
+                                            <Button variant="secondary" className={cn(
+                                                "rounded-2xl border-none bg-slate-50 text-slate-500 font-black text-xs uppercase tracking-widest h-12 hover:bg-primary/10 hover:text-primary transition-all",
+                                                !isRegistrationOpen && "col-span-2"
+                                            )}>
+                                                <Printer className="mr-2 h-4 w-4" /> Undangan
+                                            </Button>
+                                        )}
+                                    </div>
+                                )}
                             </div>
                         </CardContent>
                     </Card>

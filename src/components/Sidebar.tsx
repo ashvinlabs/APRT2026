@@ -50,7 +50,7 @@ export default function Sidebar() {
     // Non-logged in users only see Home and Dashboard
     const filteredItems = menuItems.filter(item => {
         if (!user) {
-            return item.href === '/' || item.href === '/dashboard';
+            return item.href === '/' || item.name === 'Dashboard' || item.name === 'Data Pemilih';
         }
         if (item.permission) {
             return hasPermission(item.permission);
@@ -58,20 +58,17 @@ export default function Sidebar() {
         return true;
     });
 
-    // If no user and dashboard, don't show sidebar (as per requirement: "non logged in user will not see the sidebar on this page")
-    // Wait, the requirement says "Dashboard: non logged in user will not see the sidebar on this page".
-    // I need to check the current page.
-    if (!user && pathname === '/dashboard') return null;
-    if (!user && pathname === '/') return null;
+    // Show sidebar for everyone so guests can switch between Dashboard and Data Pemilih
+    if (!user && pathname === '/login') return null;
 
     return (
         <aside className={cn(
-            "no-print flex flex-col h-screen sticky top-0 z-40 bg-white border-r border-slate-200 shadow-sm transition-all duration-300",
+            "no-print flex flex-col h-screen sticky top-0 z-40 bg-[#f9f9fb] border-r border-slate-200/60 shadow-[1px_0_0_0_rgba(0,0,0,0.02)] transition-all duration-300",
             isOpen ? "w-[280px]" : "w-[80px]"
         )}>
             {/* Header */}
             <div className={cn(
-                "flex items-center min-h-[80px] px-6 border-b border-slate-200",
+                "flex items-center min-h-[80px] px-6 border-b border-slate-200/60",
                 isOpen ? "justify-between" : "justify-center"
             )}>
                 {isOpen ? (
@@ -137,14 +134,14 @@ export default function Sidebar() {
             </nav>
 
             {/* Footer */}
-            <div className="p-3 border-t border-slate-200">
+            <div className="p-3 border-t border-slate-200/60">
                 {user ? (
                     <LogoutButton hideText={!isOpen} />
                 ) : (
                     <Link
                         href="/login"
                         className={cn(
-                            "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-primary hover:bg-primary/5 transition-all text-secondary no-underline",
+                            "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-bold text-slate-500 hover:bg-white hover:text-primary transition-all no-underline",
                             !isOpen && "justify-center"
                         )}
                     >

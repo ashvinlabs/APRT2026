@@ -154,6 +154,9 @@ CREATE POLICY "Enable read for everyone" ON public.staff FOR SELECT USING (true)
 DROP POLICY IF EXISTS "Authorized staff manage voters" ON public.voters;
 CREATE POLICY "Authorized staff manage voters" ON public.voters FOR ALL TO authenticated USING (true);
 
+DROP POLICY IF EXISTS "Enable read for everyone" ON public.voters;
+CREATE POLICY "Enable read for everyone" ON public.voters FOR SELECT USING (true);
+
 DROP POLICY IF EXISTS "Authorized staff manage votes" ON public.votes;
 CREATE POLICY "Authorized staff manage votes" ON public.votes FOR ALL TO authenticated USING (true);
 
