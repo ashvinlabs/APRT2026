@@ -154,7 +154,7 @@ export default function GoogleSyncModal({ voters: initialVoters, onClose }: Goog
                     name: appWins ? dbMatch.name : (row.name || row.nama),
                     nik: nik,
                     address: appWins ? dbMatch.address : (row.address || row.alamat || ''),
-                    invitation_code: dbMatch?.invitation_code || row.invitation_code || row.kode || `RT12-${Math.random().toString(36).substring(2, 8).toUpperCase()}`,
+                    invitation_code: dbMatch?.invitation_code || row.invitation_code || row.kode || Math.random().toString(36).substring(2, 8).toUpperCase(),
                     is_present: appWins ? dbMatch.is_present : (row.is_present ?? dbMatch?.is_present ?? false),
                     display_order: index + 1 // Always follow Sheet order
                 };
