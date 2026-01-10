@@ -13,7 +13,8 @@ import {
     Settings,
     ChevronLeft,
     Menu,
-    UserPlus
+    UserPlus,
+    Info
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import LogoutButton from './LogoutButton';
@@ -136,8 +137,26 @@ export default function Sidebar() {
                 })}
             </nav>
 
+            {/* About Link - Before Footer */}
+            <div className="px-3 pb-3">
+                <Link
+                    href="/about"
+                    className={cn(
+                        "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all no-underline",
+                        pathname === '/about'
+                            ? "bg-primary text-white shadow-md"
+                            : "text-slate-600 hover:bg-slate-100 hover:text-slate-900",
+                        !isOpen && "justify-center"
+                    )}
+                    title={!isOpen ? 'Tentang' : ''}
+                >
+                    <Info size={20} className="flex-shrink-0" />
+                    {isOpen && <span className="whitespace-nowrap">Tentang</span>}
+                </Link>
+            </div>
+
             {/* Footer */}
-            <div className="p-3 border-t border-slate-200/60 mt-auto">
+            <div className="p-3 border-t border-slate-200/60">
                 {user ? (
                     <div className="flex flex-col gap-2">
                         {/* User Profile Card */}
