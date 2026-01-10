@@ -167,7 +167,7 @@ export default function LiveDashboard() {
                         <div className="pr-4">
                             <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Hari & Waktu</p>
                             <p className="text-sm font-black text-slate-900 leading-tight">
-                                {stats?.config.date ? new Date(stats.config.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }) : 'Setting Tanggal...'}
+                                {stats?.config.date ? new Date(stats.config.date).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) : 'Setting Tanggal...'}
                             </p>
                             <p className="text-[10px] font-bold text-primary">
                                 {stats?.config.start_time && stats?.config.end_time ? `${stats.config.start_time} - ${stats.config.end_time} WIB` : 'Setting Jam...'}
