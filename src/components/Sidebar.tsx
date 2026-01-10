@@ -72,11 +72,10 @@ export default function Sidebar() {
         )}>
             {/* Header */}
             <div className={cn(
-                "flex items-center min-h-[80px] px-6 border-b border-slate-200/60",
-                isOpen ? "justify-between" : "justify-center"
+                "flex items-center justify-center min-h-[80px] px-6 border-b border-slate-200/60"
             )}>
                 {isOpen ? (
-                    <>
+                    <div className="flex items-center justify-between w-full">
                         <div className="flex items-center gap-3">
                             <div className="w-10 h-10 rounded-lg bg-primary flex items-center justify-center text-white font-bold">
                                 A
@@ -98,7 +97,7 @@ export default function Sidebar() {
                         >
                             <ChevronLeft size={20} />
                         </Button>
-                    </>
+                    </div>
                 ) : (
                     <Button
                         variant="ghost"
