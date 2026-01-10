@@ -13,8 +13,21 @@ import {
     MoreVertical,
     UserPlus,
     Loader2,
-    Check
+    Check,
+    Pencil,
+    Key,
+    UserCog
 } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle
+} from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -45,6 +58,7 @@ interface Role {
 
 interface StaffMember {
     id: string;
+    user_id: string;
     name: string;
     email: string;
     is_approved: boolean;
@@ -58,6 +72,8 @@ export default function UserManager() {
     const [roles, setRoles] = useState<Role[]>([]);
     const [loading, setLoading] = useState(true);
     const [updating, setUpdating] = useState<string | null>(null);
+    const [editingMember, setEditingMember] = useState<StaffMember | null>(null);
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
     useEffect(() => {
         fetchData();
@@ -79,6 +95,7 @@ export default function UserManager() {
             .from('staff')
             .select(`
                 id,
+                user_id,
                 name,
                 email,
                 is_approved,
@@ -160,7 +177,41 @@ export default function UserManager() {
         if (!error) {
             setStaff(prev => prev.filter(s => s.id !== member.id));
         }
+        setUpdating(member.id);
+    }
+
+    async function handleEditStaff(e: React.FormEvent) {
+        e.preventDefault();
+        if (!editingMember) return;
+
+        setUpdating(editingMember.id);
+        const { error } = await supabase
+            .from('staff')
+            .update({ name: editingMember.name })
+            .eq('id', editingMember.id);
+
+        if (!error) {
+            setStaff(prev => prev.map(s => s.id === editingMember.id ? { ...s, name: editingMember.name } : s));
+            setIsEditModalOpen(false);
+            setEditingMember(null);
+        } else {
+            alert('Gagal mengupdate profiling: ' + error.message);
+        }
         setUpdating(null);
+    }
+
+    async function handleResetPassword(member: StaffMember) {
+        if (!confirm(`Kirim email reset password ke ${member.email}?`)) return;
+
+        const { error } = await supabase.auth.resetPasswordForEmail(member.email, {
+            redirectTo: window.location.origin + '/reset-password',
+        });
+
+        if (error) {
+            alert('Gagal mengirim email reset: ' + error.message);
+        } else {
+            alert('Email reset password telah dikirim ke ' + member.email);
+        }
     }
 
     if (loading) {
@@ -309,25 +360,48 @@ export default function UserManager() {
                                                     <MoreVertical size={18} className="text-slate-400" />
                                                 </Button>
                                             </DropdownMenuTrigger>
-                                            <DropdownMenuContent align="end" className="w-48 rounded-xl shadow-2xl border-slate-100">
+                                            <DropdownMenuContent align="end" className="w-56 rounded-xl shadow-2xl border-slate-100 p-2">
+                                                <DropdownMenuLabel className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2 mb-1">Akun Saya</DropdownMenuLabel>
+                                                {(hasPermission('manage_staff') || member.user_id === user?.user_id) && (
+                                                    <DropdownMenuItem
+                                                        onClick={() => { setEditingMember(member); setIsEditModalOpen(true); }}
+                                                        className="flex items-center gap-2 font-bold py-2.5 rounded-lg cursor-pointer text-slate-700"
+                                                    >
+                                                        <Pencil size={16} className="text-blue-500" />
+                                                        Edit Profil
+                                                    </DropdownMenuItem>
+                                                )}
                                                 <DropdownMenuItem
-                                                    onClick={() => toggleApproval(member)}
-                                                    className={cn(
-                                                        "flex items-center gap-2 font-bold py-2.5 rounded-lg cursor-pointer",
-                                                        member.is_approved ? "text-rose-500" : "text-emerald-600"
-                                                    )}
+                                                    onClick={() => handleResetPassword(member)}
+                                                    className="flex items-center gap-2 font-bold py-2.5 rounded-lg cursor-pointer text-slate-700"
                                                 >
-                                                    {member.is_approved ? <XCircle size={16} /> : <CheckCircle2 size={16} />}
-                                                    {member.is_approved ? "Batalkan Persetujuan" : "Setujui Petugas"}
+                                                    <Key size={16} className="text-amber-500" />
+                                                    Reset Password
                                                 </DropdownMenuItem>
-                                                <DropdownMenuSeparator />
-                                                <DropdownMenuItem
-                                                    onClick={() => deleteStaff(member)}
-                                                    className="flex items-center gap-2 text-rose-500 font-bold py-2.5 rounded-lg cursor-pointer"
-                                                >
-                                                    <Trash2 size={16} />
-                                                    Hapus Petugas
-                                                </DropdownMenuItem>
+
+                                                {hasPermission('manage_staff') && (
+                                                    <>
+                                                        <DropdownMenuSeparator className="my-2" />
+                                                        <DropdownMenuLabel className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2 mb-1">Administrasi</DropdownMenuLabel>
+                                                        <DropdownMenuItem
+                                                            onClick={() => toggleApproval(member)}
+                                                            className={cn(
+                                                                "flex items-center gap-2 font-bold py-2.5 rounded-lg cursor-pointer",
+                                                                member.is_approved ? "text-rose-500" : "text-emerald-600"
+                                                            )}
+                                                        >
+                                                            {member.is_approved ? <XCircle size={16} /> : <CheckCircle2 size={16} />}
+                                                            {member.is_approved ? "Batalkan Persetujuan" : "Setujui Petugas"}
+                                                        </DropdownMenuItem>
+                                                        <DropdownMenuItem
+                                                            onClick={() => deleteStaff(member)}
+                                                            className="flex items-center gap-2 text-rose-500 font-bold py-2.5 rounded-lg cursor-pointer"
+                                                        >
+                                                            <Trash2 size={16} />
+                                                            Hapus Petugas
+                                                        </DropdownMenuItem>
+                                                    </>
+                                                )}
                                             </DropdownMenuContent>
                                         </DropdownMenu>
                                     </TableCell>
@@ -344,6 +418,55 @@ export default function UserManager() {
                     </Table>
                 </CardContent>
             </Card>
+
+            {/* Edit Modal */}
+            <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
+                <DialogContent className="sm:max-w-[425px] rounded-[2rem] p-0 overflow-hidden border-none shadow-2xl">
+                    <DialogHeader className="p-8 bg-slate-900 text-white relative">
+                        <div className="absolute top-0 right-0 p-8 opacity-10 pointer-events-none">
+                            <UserCog size={100} />
+                        </div>
+                        <DialogTitle className="text-2xl font-black italic tracking-tighter uppercase">Edit <span className="text-blue-400">Profil</span></DialogTitle>
+                        <DialogDescription className="text-slate-400 font-bold">Perbarui data diri petugas.</DialogDescription>
+                    </DialogHeader>
+                    <form onSubmit={handleEditStaff} className="p-8 space-y-6 bg-white">
+                        <div className="space-y-2">
+                            <Label className="text-xs font-black text-slate-400 uppercase tracking-widest">Nama Lengkap</Label>
+                            <Input
+                                value={editingMember?.name || ''}
+                                onChange={e => setEditingMember(prev => prev ? { ...prev, name: e.target.value } : null)}
+                                className="h-14 rounded-2xl bg-slate-50 border-slate-200 font-bold text-lg focus-visible:ring-primary/20"
+                                required
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label className="text-xs font-black text-slate-400 uppercase tracking-widest">Email (ID)</Label>
+                            <Input
+                                value={editingMember?.email || ''}
+                                disabled
+                                className="h-14 rounded-2xl bg-slate-100 border-slate-200 font-mono text-sm cursor-not-allowed"
+                            />
+                        </div>
+                        <DialogFooter className="pt-4 flex gap-3">
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                onClick={() => setIsEditModalOpen(false)}
+                                className="flex-1 h-14 rounded-2xl font-black text-slate-400"
+                            >
+                                Batal
+                            </Button>
+                            <Button
+                                type="submit"
+                                disabled={updating === editingMember?.id}
+                                className="flex-1 h-14 rounded-2xl font-black bg-blue-600 hover:bg-blue-700 shadow-xl shadow-blue-100"
+                            >
+                                {updating ? <Loader2 className="animate-spin" /> : 'Simpan Perubahan'}
+                            </Button>
+                        </DialogFooter>
+                    </form>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

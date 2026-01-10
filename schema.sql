@@ -201,21 +201,25 @@ WITH CHECK (
 DROP POLICY IF EXISTS "Enable read for everyone" ON public.staff;
 CREATE POLICY "Enable read for everyone" ON public.staff FOR SELECT USING (true);
 
--- Staff Management Policies - UPDATE only (for approval)
+-- Staff Management Policies - UPDATE (for approval and self-editing)
 DROP POLICY IF EXISTS "Enable staff approval and management" ON public.staff;
 CREATE POLICY "Enable staff approval and management" ON public.staff
 FOR UPDATE TO authenticated
 USING (
+    -- Case 1: Is an Admin/Manager
     EXISTS (
         SELECT 1 FROM staff s
         JOIN staff_roles sr ON s.id = sr.staff_id
         JOIN roles r ON sr.role_id = r.id
         WHERE s.user_id = auth.uid()
         AND s.is_approved = true
-        AND (r.permissions->>'all' = 'true' OR r.permissions->>'manage_staff' = 'true' OR r.permissions->>'view_logs' = 'true')
+        AND (r.permissions->>'all' = 'true' OR r.permissions->>'manage_staff' = 'true')
     )
+    OR
+    -- Case 2: Is the record owner
+    user_id = auth.uid()
 )
-WITH CHECK (true); -- Allow updating any staff record if user has permission
+WITH CHECK (true);
 
 -- INSERT policy for new staff (registration)
 DROP POLICY IF EXISTS "Enable staff registration" ON public.staff;
@@ -280,4 +284,26 @@ ON CONFLICT (name) DO UPDATE SET
 INSERT INTO public.settings (id, value) 
 VALUES 
     ('election_config', '{"title": "Pemilihan Ketua RT 12", "location": "Pelem Kidul - Baturetno", "is_voting_open": true, "is_registration_open": true, "date": "2026-01-10"}')
-ON CONFLICT (id) DO NOTHING;
+-- ==========================================
+-- 6. TRIGGERS & AUTOMATION
+-- ==========================================
+
+-- Trigger to automatically create a staff record on signup/invite acceptance
+CREATE OR REPLACE FUNCTION public.handle_new_staff()
+RETURNS TRIGGER AS $$
+BEGIN
+  INSERT INTO public.staff (user_id, name, email, is_approved)
+  VALUES (
+    NEW.id,
+    COALESCE(NEW.raw_user_meta_data->>'full_name', SPLIT_PART(NEW.email, '@', 1)),
+    NEW.email,
+    FALSE
+  );
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE FUNCTION public.handle_new_staff();
