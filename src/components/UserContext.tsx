@@ -4,6 +4,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { UserProfile } from '@/lib/auth-utils';
 import { Permissions, aggregatePermissions, Role } from '@/lib/permissions';
+import { useRouter } from 'next/navigation';
 
 interface UserContextType {
     user: UserProfile | null;
@@ -17,6 +18,7 @@ const UserContext = createContext<UserContextType | undefined>(undefined);
 export function UserProvider({ children }: { children: React.ReactNode }) {
     const [user, setUser] = useState<UserProfile | null>(null);
     const [isLoading, setIsLoading] = useState(true);
+    const router = useRouter();
 
     const fetchUserProfile = async (userId: string) => {
         // Fetch staff profile
@@ -76,7 +78,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 
         const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
             if (event === 'PASSWORD_RECOVERY') {
-                window.location.href = '/reset-password';
+                router.push('/reset-password' + window.location.hash);
                 return;
             }
 
@@ -90,7 +92,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 
         // Also check hash manually for some edge cases (e.g. initial load with invite)
         if (window.location.hash && (window.location.hash.includes('type=invite') || window.location.hash.includes('type=recovery'))) {
-            window.location.href = '/reset-password';
+            router.push('/reset-password' + window.location.hash);
         }
 
         return () => subscription.unsubscribe();
