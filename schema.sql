@@ -283,7 +283,8 @@ ON CONFLICT (name) DO UPDATE SET
 -- Seed initial settings
 INSERT INTO public.settings (id, value) 
 VALUES 
-    ('election_config', '{"title": "Pemilihan Ketua RT 12", "location": "Pelem Kidul - Baturetno", "is_voting_open": true, "is_registration_open": true, "date": "2026-01-10"}')
+    ('election_config', '{"title": "Pemilihan Ketua RT 12", "location": "Pelem Kidul - Baturetno", "location_detail": "Balai RT 12 (Rumah Bapak Ketua RT)", "is_voting_open": true, "is_registration_open": true, "date": "2026-01-10", "start_time": "08:00", "end_time": "12:00"}')
+ON CONFLICT (id) DO UPDATE SET value = EXCLUDED.value;
 -- ==========================================
 -- 6. TRIGGERS & AUTOMATION
 -- ==========================================

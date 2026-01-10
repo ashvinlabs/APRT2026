@@ -3,7 +3,8 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { QRCodeSVG } from 'qrcode.react';
-import { Printer, Download, Search, Loader2 } from 'lucide-react';
+import { Printer, Download, Search, Loader2, MapPin, Calendar, Clock, CreditCard } from 'lucide-react';
+import { useSearchParams } from 'next/navigation';
 
 interface Voter {
   id: string;
@@ -14,15 +15,23 @@ interface Voter {
 }
 
 export default function InvitationGenerator() {
+  const searchParams = useSearchParams();
   const [voters, setVoters] = useState<Voter[]>([]);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useState(searchParams.get('nik') || '');
   const [mounted, setMounted] = useState(false);
+  const [config, setConfig] = useState<any>(null);
 
   useEffect(() => {
     setMounted(true);
     fetchVoters();
+    fetchConfig();
   }, []);
+
+  async function fetchConfig() {
+    const { data } = await supabase.from('settings').select('*').eq('id', 'election_config').single();
+    if (data?.value) setConfig(data.value);
+  }
 
   async function fetchVoters() {
     setLoading(true);

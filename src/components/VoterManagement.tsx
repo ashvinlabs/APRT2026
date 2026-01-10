@@ -197,6 +197,15 @@ export default function VoterManagement() {
         document.body.removeChild(link);
     };
 
+    const canSeeFullData = hasPermission('manage_voters');
+
+    const formatNIK = (nik: string | undefined) => {
+        if (!nik) return 'NIK tidak terdaftar';
+        if (canSeeFullData) return nik;
+        if (nik.length < 5) return '***';
+        return `${nik.slice(0, 3)}********${nik.slice(-2)}`;
+    };
+
     const filteredVoters = voters.filter(v =>
         v.name.toLowerCase().includes(search.toLowerCase()) ||
         v.nik?.includes(search) ||
@@ -354,13 +363,13 @@ export default function VoterManagement() {
                                         <span className="w-8 h-8 rounded-lg bg-slate-50 flex items-center justify-center text-slate-400">
                                             <Info size={14} />
                                         </span>
-                                        <span className="font-mono tracking-tighter">{voter.nik || 'NIK tidak terdaftar'}</span>
+                                        <span className="font-mono tracking-tighter">{formatNIK(voter.nik)}</span>
                                     </div>
                                     <div className="flex items-center gap-3 text-slate-400 text-xs font-bold italic">
                                         <span className="w-8 h-8 rounded-lg bg-slate-50 flex items-center justify-center text-slate-300">
                                             <MapPin size={14} />
                                         </span>
-                                        <span>{voter.address || 'Alamat tidak tersedia'}</span>
+                                        <span>{canSeeFullData ? (voter.address || 'Alamat tidak tersedia') : '[Alamat Dirahasiakan]'}</span>
                                     </div>
                                 </div>
 
@@ -386,10 +395,13 @@ export default function VoterManagement() {
                                                 )}
                                             </Button>
                                         )}
-                                        {hasPermission('manage_invitations') && (
+                                        {hasPermission('manage_invitations') ? (
                                             <Button
                                                 variant="secondary"
-                                                onClick={() => router.push('/panitia/invitations')}
+                                                onClick={() => {
+                                                    // Set search to exactly this NIK and redirect
+                                                    router.push(`/panitia/invitations?nik=${voter.nik}`);
+                                                }}
                                                 className={cn(
                                                     "rounded-2xl border-none bg-slate-50 text-slate-500 font-black text-xs uppercase tracking-widest h-12 hover:bg-primary/10 hover:text-primary transition-all",
                                                     !isRegistrationOpen && "col-span-2"
@@ -397,6 +409,10 @@ export default function VoterManagement() {
                                             >
                                                 <Printer className="mr-2 h-4 w-4" /> Undangan
                                             </Button>
+                                        ) : (
+                                            !voter.is_present && !isRegistrationOpen && (
+                                                <div className="col-span-2 text-center text-[10px] font-bold text-slate-400 uppercase">Input ditutup</div>
+                                            )
                                         )}
                                     </div>
                                 )}
