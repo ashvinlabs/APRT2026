@@ -227,41 +227,41 @@ export default function VoterManagement() {
     if (!mounted) return null;
 
     return (
-        <div className="p-8 max-w-[1400px] mx-auto animate-fade-in" suppressHydrationWarning>
+        <div className="p-4 md:p-8 max-w-[1400px] mx-auto animate-fade-in" suppressHydrationWarning>
             {/* Page Header */}
-            <header className="flex flex-col md:flex-row justify-between items-center gap-6 mb-12 pb-8 border-b border-slate-200">
+            <header className="flex flex-col md:flex-row justify-between items-center gap-6 mb-8 md:mb-12 pb-6 md:pb-8 border-b border-slate-200">
                 <div>
-                    <h1 className="text-4xl font-black text-slate-900 tracking-tight">
+                    <h1 className="text-3xl md:text-4xl font-black text-slate-900 tracking-tight">
                         {user ? 'Manajemen ' : 'Daftar '}
                         <span className="text-primary">Pemilih</span>
                     </h1>
-                    <p className="text-slate-500 font-medium mt-1">
+                    <p className="text-slate-500 font-medium mt-1 text-sm md:text-base">
                         {user
                             ? 'Kelola data DPT, verifikasi kehadiran, dan cetak undangan warga.'
                             : 'Lihat Daftar Pemilih Tetap (DPT) Pemilu RT 12 Pelem Kidul.'}
                     </p>
                 </div>
-                <div className="flex gap-3">
+                <div className="flex flex-wrap gap-2 md:gap-3 w-full md:w-auto justify-center">
                     {user && (
-                        <Button variant="outline" onClick={() => setIsSyncModalOpen(true)} className="rounded-2xl h-12 px-6 font-bold shadow-sm hover:bg-slate-50 transition-all border-slate-200">
-                            <Cloud className="mr-2 h-5 w-5 text-blue-500" />
+                        <Button variant="outline" onClick={() => setIsSyncModalOpen(true)} className="rounded-2xl h-10 md:h-12 px-4 md:px-6 font-bold shadow-sm hover:bg-slate-50 transition-all border-slate-200 text-xs md:text-sm">
+                            <Cloud className="mr-2 h-4 w-4 md:h-5 md:w-5 text-blue-500" />
                             Google Sheets
                         </Button>
                     )}
                     {user && (
-                        <Button variant="outline" onClick={exportToCSV} className="rounded-2xl h-12 px-6 font-bold shadow-sm hover:bg-slate-50 transition-all border-slate-200">
-                            <Download className="mr-2 h-5 w-5 text-emerald-500" />
+                        <Button variant="outline" onClick={exportToCSV} className="rounded-2xl h-10 md:h-12 px-4 md:px-6 font-bold shadow-sm hover:bg-slate-50 transition-all border-slate-200 text-xs md:text-sm">
+                            <Download className="mr-2 h-4 w-4 md:h-5 md:w-5 text-emerald-500" />
                             Export CSV
                         </Button>
                     )}
                     {user && (hasPermission('manage_voters') || hasPermission('edit_voters')) && (
                         <>
-                            <Button variant="outline" onClick={() => setIsImportModalOpen(true)} className="rounded-2xl h-12 px-6 font-bold shadow-sm hover:bg-slate-50 transition-all border-slate-200">
-                                <FileUp className="mr-2 h-5 w-5 text-indigo-500" />
+                            <Button variant="outline" onClick={() => setIsImportModalOpen(true)} className="rounded-2xl h-10 md:h-12 px-4 md:px-6 font-bold shadow-sm hover:bg-slate-50 transition-all border-slate-200 text-xs md:text-sm">
+                                <FileUp className="mr-2 h-4 w-4 md:h-5 md:w-5 text-indigo-500" />
                                 Import CSV
                             </Button>
-                            <Button onClick={() => setIsAddModalOpen(true)} className="rounded-2xl h-12 px-6 font-black shadow-lg shadow-primary/20 hover:scale-[1.02] transition-all">
-                                <UserPlus className="mr-2 h-5 w-5" />
+                            <Button onClick={() => setIsAddModalOpen(true)} className="rounded-2xl h-10 md:h-12 px-4 md:px-6 font-black shadow-lg shadow-primary/20 hover:scale-[1.02] transition-all text-xs md:text-sm">
+                                <UserPlus className="mr-2 h-4 w-4 md:h-5 md:w-5" />
                                 Tambah Manual
                             </Button>
                         </>
@@ -270,14 +270,14 @@ export default function VoterManagement() {
             </header>
 
             {/* Quick Stats & Search */}
-            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-10">
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 md:gap-6 mb-6 md:mb-10">
                 <Card className="lg:col-span-3 border-none bg-white shadow-xl shadow-slate-200/40 rounded-3xl overflow-hidden ring-1 ring-slate-100">
-                    <CardContent className="p-4">
+                    <CardContent className="p-3 md:p-4">
                         <div className="relative flex items-center group">
-                            <Search className="absolute left-4 text-slate-400 group-focus-within:text-primary transition-colors" size={24} />
+                            <Search className="absolute left-3 md:left-4 text-slate-400 group-focus-within:text-primary transition-colors" size={20} />
                             <Input
                                 placeholder="Cari nama, NIK, atau kode undangan..."
-                                className="pl-14 h-16 text-lg font-medium border-none focus-visible:ring-0 bg-transparent placeholder:text-slate-300"
+                                className="pl-10 md:pl-14 h-12 md:h-16 text-base md:text-lg font-medium border-none focus-visible:ring-0 bg-transparent placeholder:text-slate-300"
                                 value={search}
                                 onChange={(e) => setSearch(e.target.value)}
                             />
@@ -290,30 +290,21 @@ export default function VoterManagement() {
                     </CardContent>
                 </Card>
 
-                <Card className="border-none bg-primary text-white shadow-xl shadow-primary/20 rounded-3xl group transition-all hover:scale-[1.02]">
-                    <CardContent className="p-6 flex flex-col justify-center h-full">
-                        <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-70 mb-1">Kehadiran (Check-in)</p>
-                        <div className="flex items-end gap-2">
-                            <span className="text-4xl font-black leading-none">{voters.filter(v => v.is_present).length}</span>
-                            <span className="text-lg font-black opacity-50 mb-0.5">/ {voters.length}</span>
+                <Card className="border-none bg-gradient-to-br from-primary to-blue-600 text-white shadow-xl shadow-primary/20 rounded-3xl overflow-hidden">
+                    <CardContent className="p-4 md:p-6 flex items-center justify-between">
+                        <div>
+                            <p className="text-white/70 font-black uppercase tracking-widest text-[10px] mb-1">Total DPT</p>
+                            <p className="text-3xl md:text-4xl font-black leading-none">{voters.length}</p>
+                        </div>
+                        <div className="w-12 h-12 md:w-16 md:h-16 rounded-2xl bg-white/10 flex items-center justify-center backdrop-blur-sm">
+                            <Users size={24} className="md:w-8 md:h-8" />
                         </div>
                     </CardContent>
                 </Card>
             </div>
 
-            {/* Debug Info - Remove after fixing */}
-            {!user && (
-                <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-2xl">
-                    <p className="text-sm font-bold text-yellow-800">Debug Info (Public View):</p>
-                    <p className="text-xs text-yellow-700">Loading: {loading ? 'Yes' : 'No'}</p>
-                    <p className="text-xs text-yellow-700">Total Voters: {voters.length}</p>
-                    <p className="text-xs text-yellow-700">Filtered Voters: {filteredVoters.length}</p>
-                    <p className="text-xs text-yellow-700">User: {user ? 'Logged in' : 'Not logged in'}</p>
-                </div>
-            )}
-
             {/* Voter Cards Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
                 {loading ? (
                     <div className="col-span-full flex flex-col items-center justify-center py-20 gap-4">
                         <Loader2 className="animate-spin text-primary" size={64} />
