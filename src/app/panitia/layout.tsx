@@ -12,7 +12,7 @@ export default function PanitiaLayout({
         <SidebarProvider>
             <div className="flex min-h-screen bg-[#fcfcfc]">
                 <Sidebar />
-                <main className="flex-1 overflow-x-hidden">
+                <main className="flex-1 overflow-x-hidden md:ml-0">
                     {children}
                 </main>
             </div>

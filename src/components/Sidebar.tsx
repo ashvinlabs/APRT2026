@@ -64,7 +64,11 @@ export default function Sidebar() {
     return (
         <aside className={cn(
             "no-print flex flex-col h-screen sticky top-0 z-40 bg-[#f9f9fb] border-r border-slate-200/60 shadow-[1px_0_0_0_rgba(0,0,0,0.02)] transition-all duration-300",
-            isOpen ? "w-[280px]" : "w-[80px]"
+            // Mobile: hidden by default, show when open
+            "fixed md:sticky -left-[280px] md:left-0",
+            isOpen ? "left-0 md:w-[280px]" : "md:w-[80px]",
+            // Always full width on mobile when open
+            isOpen && "w-[280px]"
         )}>
             {/* Header */}
             <div className={cn(
