@@ -17,9 +17,12 @@ import {
     CreditCard,
     Info,
     Download,
-    Trash2
+    Trash2,
+    Cloud,
+    ExternalLink
 } from 'lucide-react';
 import VoterImport from './VoterImport';
+import GoogleSyncModal from './GoogleSyncModal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -43,6 +46,7 @@ export default function VoterManagement() {
     const [search, setSearch] = useState('');
     const [isImportModalOpen, setIsImportModalOpen] = useState(false);
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+    const [isSyncModalOpen, setIsSyncModalOpen] = useState(false);
     const [mounted, setMounted] = useState(false);
     const [newVoter, setNewVoter] = useState({ name: '', nik: '', address: '' });
     const [isRegistrationOpen, setIsRegistrationOpen] = useState(true);
@@ -191,6 +195,12 @@ export default function VoterManagement() {
                     </p>
                 </div>
                 <div className="flex gap-3">
+                    {user && (
+                        <Button variant="outline" onClick={() => setIsSyncModalOpen(true)} className="rounded-2xl h-12 px-6 font-bold shadow-sm hover:bg-slate-50 transition-all border-slate-200">
+                            <Cloud className="mr-2 h-5 w-5 text-blue-500" />
+                            Google Sheets
+                        </Button>
+                    )}
                     {user && (
                         <Button variant="outline" onClick={exportToCSV} className="rounded-2xl h-12 px-6 font-bold shadow-sm hover:bg-slate-50 transition-all border-slate-200">
                             <Download className="mr-2 h-5 w-5 text-emerald-500" />
@@ -424,6 +434,14 @@ export default function VoterManagement() {
                             </div>
                         </form>
                     </Card>
+                </div>
+            )}
+            {isSyncModalOpen && (
+                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
+                    <GoogleSyncModal
+                        voters={voters}
+                        onClose={() => setIsSyncModalOpen(false)}
+                    />
                 </div>
             )}
         </div>
