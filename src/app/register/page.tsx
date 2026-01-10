@@ -25,25 +25,22 @@ export default function RegisterPage() {
 
         try {
             // 1. Sign up user via Supabase Auth
+            // We pass full_name in metadata so the database trigger can pick it up
             const { data: authData, error: authError } = await supabase.auth.signUp({
                 email,
                 password,
+                options: {
+                    data: {
+                        full_name: name,
+                    }
+                }
             });
 
             if (authError) throw authError;
             if (!authData.user) throw new Error('Gagal membuat akun.');
 
-            // 2. Create staff record (is_approved defaults to false)
-            const { error: staffError } = await supabase
-                .from('staff')
-                .insert([
-                    {
-                        user_id: authData.user.id,
-                        name: name,
-                    },
-                ]);
-
-            if (staffError) throw staffError;
+            // 2. The staff record is now automatically created by the 'handle_new_staff' 
+            // trigger in the database. No manual insert needed here to avoid duplicate key errors.
 
             // 3. Success! Redirect to pending page
             router.push('/pending-approval');
