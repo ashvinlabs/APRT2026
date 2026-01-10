@@ -45,33 +45,76 @@ export default function ResetPasswordPage() {
                 // Check URL for access_token or recovery markers
                 const hash = window.location.hash || '';
                 const searchParams = new URLSearchParams(window.location.search);
-                const hasToken = hash.includes('access_token=') || searchParams.has('code');
-                const isRecovery = hash.includes('type=recovery') || hash.includes('type=invite') || searchParams.get('type') === 'recovery';
 
-                if (hasToken || isRecovery) {
-                    console.log('ResetPasswordPage: Recovery token detected, waiting for session...');
+                // Manual parse for more reliability
+                const params: Record<string, string> = {};
+                hash.substring(1).split('&').forEach(p => {
+                    const [k, v] = p.split('=');
+                    if (k && v) params[k] = decodeURIComponent(v);
+                });
 
-                    // Give Supabase some time to process the token (up to ~6 seconds)
-                    for (let i = 0; i < 8; i++) {
+                const accessToken = params['access_token'] || searchParams.get('access_token');
+                const refreshToken = params['refresh_token'] || searchParams.get('refresh_token');
+                const isRecovery = hash.includes('type=recovery') || hash.includes('type=invite') || searchParams.get('type') === 'recovery' || params['type'] === 'recovery' || params['type'] === 'invite';
+
+                if (accessToken) {
+                    console.log('ResetPasswordPage: Access token found, attempting manual setSession');
+
+                    // Check for project mismatch before attempting (to give better error)
+                    try {
+                        const payload = JSON.parse(atob(accessToken.split('.')[1]));
+                        const tokenIss = payload.iss?.replace('/auth/v1', '');
+                        const configUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.replace(/\/$/, '');
+
+                        if (tokenIss && configUrl && !tokenIss.includes(configUrl) && !configUrl.includes(tokenIss)) {
+                            console.error('ResetPasswordPage: Project Mismatch!', { tokenIss, configUrl });
+                            setError(`Project Mismatch: Link ini berasal dari project Supabase lain (${tokenIss}). Pastikan konfigurasi NEXT_PUBLIC_SUPABASE_URL sudah benar.`);
+                            setCheckingSession(false);
+                            return;
+                        }
+                    } catch (e) {
+                        console.error('Failed to parse token payload for project check');
+                    }
+
+                    const { data: { session: manualSession }, error: manualError } = await supabase.auth.setSession({
+                        access_token: accessToken,
+                        refresh_token: refreshToken || '',
+                    });
+
+                    if (manualSession) {
+                        console.log('ResetPasswordPage: Session set manually');
+                        setSessionValid(true);
+                        setError(null);
+                        setCheckingSession(false);
+                        return;
+                    } else if (manualError) {
+                        console.error('ResetPasswordPage: Manual setSession failed:', manualError);
+                        setError(`Gagal memverifikasi sesi: ${manualError.message}`);
+                        setCheckingSession(false);
+                        return;
+                    }
+                }
+
+                if (isRecovery) {
+                    console.log('ResetPasswordPage: Recovery marker found without token, waiting for auto-session...');
+                    // Give Supabase some time to process the token automatically if it's slow
+                    for (let i = 0; i < 6; i++) {
                         await new Promise(resolve => setTimeout(resolve, 800));
                         const { data: { session: retrySession } } = await supabase.auth.getSession();
 
                         if (retrySession) {
-                            console.log('ResetPasswordPage: Session obtained after retry', i + 1);
                             setSessionValid(true);
                             setError(null);
                             setCheckingSession(false);
                             return;
                         }
                     }
-
-                    // If still no session after retries
                     setError('Sesi pemulihan tidak ditemukan. Pastikan anda menggunakan link terbaru dari email.');
                 } else {
-                    setError('Link pemulihan tidak valid atau sudah kadaluarsa. Silakan minta link baru.');
+                    setError('Link tidak valid atau sudah kadaluarsa. Silakan gunakan link terbaru dari email.');
                 }
             } catch (err: any) {
-                console.error('ResetPasswordPage: Session check error:', err);
+                console.error('ResetPasswordPage: Global check error:', err);
                 setError('Terjadi kesalahan teknis. Silakan coba lagi.');
             } finally {
                 setCheckingSession(false);
