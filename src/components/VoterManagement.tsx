@@ -16,7 +16,8 @@ import {
     MapPin,
     CreditCard,
     Info,
-    Download
+    Download,
+    Trash2
 } from 'lucide-react';
 import VoterImport from './VoterImport';
 import { Button } from '@/components/ui/button';
@@ -87,6 +88,21 @@ export default function VoterManagement() {
             setVoters(data || []);
         }
         setLoading(false);
+    }
+
+    async function deleteVoter(voterId: string, name: string) {
+        if (!confirm(`Apakah Anda yakin ingin menghapus data warga "${name}"? Tindakan ini tidak dapat dibatalkan.`)) return;
+
+        const { error } = await supabase
+            .from('voters')
+            .delete()
+            .eq('id', voterId);
+
+        if (error) {
+            alert('Gagal menghapus data: ' + error.message);
+        } else {
+            setVoters(voters.filter(v => v.id !== voterId));
+        }
     }
 
     async function togglePresence(voterId: string, currentStatus: boolean) {
@@ -264,14 +280,25 @@ export default function VoterManagement() {
                                             </div>
                                         </div>
                                     </div>
-                                    <Badge className={cn(
-                                        "px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest",
-                                        voter.is_present
-                                            ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-200 border-none animate-pulse"
-                                            : "bg-slate-100 text-slate-400 hover:bg-slate-200 border-none"
-                                    )}>
-                                        {voter.is_present ? 'Hadir' : 'Belum Hadir'}
-                                    </Badge>
+                                    <div className="flex items-center gap-2">
+                                        {user && hasPermission('manage_voters') && (
+                                            <button
+                                                onClick={() => deleteVoter(voter.id, voter.name)}
+                                                className="p-2 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-all"
+                                                title="Hapus Warga"
+                                            >
+                                                <Trash2 size={16} />
+                                            </button>
+                                        )}
+                                        <Badge className={cn(
+                                            "px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest",
+                                            voter.is_present
+                                                ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-200 border-none animate-pulse"
+                                                : "bg-slate-100 text-slate-400 hover:bg-slate-200 border-none"
+                                        )}>
+                                            {voter.is_present ? 'Hadir' : 'Belum Hadir'}
+                                        </Badge>
+                                    </div>
                                 </div>
 
                                 <div className="space-y-3 mb-8">

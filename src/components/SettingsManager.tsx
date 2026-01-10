@@ -53,6 +53,7 @@ export default function SettingsManager() {
     const [saving, setSaving] = useState(false);
     const [candidates, setCandidates] = useState<Candidate[]>([]);
     const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+    const [draggedItem, setDraggedItem] = useState<number | null>(null);
 
     useEffect(() => {
         fetchSettings();
@@ -115,8 +116,47 @@ export default function SettingsManager() {
             .from('candidates')
             .getPublicUrl(filePath);
 
-        await updateCandidate(candidateId, { photo_url: publicUrl });
+        await updateCandidate(candidateId, { photo_url: publicUrl + '?t=' + Date.now() });
         setSaving(false);
+        fetchCandidates(); // Refresh to ensure everything is synced
+    }
+
+    // Drag & Drop Handling
+    function handleDragStart(e: React.DragEvent, index: number) {
+        setDraggedItem(index);
+        e.dataTransfer.effectAllowed = 'move';
+    }
+
+    function handleDragOver(e: React.DragEvent, index: number) {
+        e.preventDefault();
+        if (draggedItem === null || draggedItem === index) return;
+
+        const items = [...candidates];
+        const itemToMove = items[draggedItem];
+        items.splice(draggedItem, 1);
+        items.splice(index, 0, itemToMove);
+
+        // Update display_order locally
+        const updatedItems = items.map((item, idx) => ({
+            ...item,
+            display_order: idx + 1
+        }));
+
+        setCandidates(updatedItems);
+        setDraggedItem(index);
+    }
+
+    async function handleDragEnd() {
+        setDraggedItem(null);
+        setSaving(true);
+        // Persist all orders to database
+        const updates = candidates.map((c, idx) =>
+            supabase.from('candidates').update({ display_order: idx + 1 }).eq('id', c.id)
+        );
+        await Promise.all(updates);
+        setSaving(false);
+        setMessage({ type: 'success', text: 'Urutan kandidat disimpan!' });
+        setTimeout(() => setMessage(null), 2000);
     }
 
     async function fetchSettings() {
@@ -353,8 +393,18 @@ export default function SettingsManager() {
                     </CardHeader>
                     <CardContent className="p-8">
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            {candidates.map((candidate) => (
-                                <div key={candidate.id} className="relative group p-6 rounded-3xl bg-slate-50 border border-slate-100 hover:border-primary/20 hover:bg-white hover:shadow-xl transition-all duration-300">
+                            {candidates.map((candidate, index) => (
+                                <div
+                                    key={candidate.id}
+                                    draggable
+                                    onDragStart={(e) => handleDragStart(e, index)}
+                                    onDragOver={(e) => handleDragOver(e, index)}
+                                    onDragEnd={handleDragEnd}
+                                    className={cn(
+                                        "relative group p-6 rounded-3xl bg-slate-50 border border-slate-100 hover:border-primary/20 hover:bg-white hover:shadow-xl transition-all duration-300 cursor-move",
+                                        draggedItem === index && "opacity-40 scale-95 border-primary border-2 dashed"
+                                    )}
+                                >
                                     <button
                                         onClick={() => deleteCandidate(candidate.id)}
                                         className="absolute top-4 right-4 p-2 text-slate-300 hover:text-rose-500 transition-colors z-10"
