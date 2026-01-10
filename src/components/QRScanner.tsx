@@ -9,9 +9,10 @@ import { Card } from '@/components/ui/card';
 interface QRScannerProps {
     onScanSuccess: (decodedText: string) => void;
     onScanError?: (error: string) => void;
+    disabled?: boolean;
 }
 
-export default function QRScanner({ onScanSuccess, onScanError }: QRScannerProps) {
+export default function QRScanner({ onScanSuccess, onScanError, disabled = false }: QRScannerProps) {
     const [isScanning, setIsScanning] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -29,6 +30,7 @@ export default function QRScanner({ onScanSuccess, onScanError }: QRScannerProps
     }, []);
 
     const startScanning = async () => {
+        if (disabled) return;
         try {
             setIsLoading(true);
             setError(null);
@@ -151,7 +153,7 @@ export default function QRScanner({ onScanSuccess, onScanError }: QRScannerProps
                         onClick={startScanning}
                         size="lg"
                         className="w-full"
-                        disabled={isLoading}
+                        disabled={isLoading || disabled}
                     >
                         {isLoading ? (
                             <>

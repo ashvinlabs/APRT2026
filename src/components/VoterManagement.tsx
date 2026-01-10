@@ -15,7 +15,8 @@ import {
     Printer,
     MapPin,
     CreditCard,
-    Info
+    Info,
+    Download
 } from 'lucide-react';
 import VoterImport from './VoterImport';
 import { Button } from '@/components/ui/button';
@@ -41,11 +42,37 @@ export default function VoterManagement() {
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const [mounted, setMounted] = useState(false);
     const [newVoter, setNewVoter] = useState({ name: '', nik: '', address: '' });
+    const [isRegistrationOpen, setIsRegistrationOpen] = useState(true);
 
     useEffect(() => {
         setMounted(true);
         fetchVoters();
+        fetchSettings();
+
+        // Real-time listener for settings
+        const sub = supabase
+            .channel('voters_settings')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'settings', filter: 'id=eq.election_config' }, (payload: any) => {
+                if (payload.new?.value) {
+                    setIsRegistrationOpen(payload.new.value.is_registration_open !== false);
+                }
+            })
+            .subscribe();
+
+        return () => { supabase.removeChannel(sub); };
     }, []);
+
+    async function fetchSettings() {
+        const { data } = await supabase
+            .from('settings')
+            .select('value')
+            .eq('id', 'election_config')
+            .single();
+
+        if (data?.value) {
+            setIsRegistrationOpen(data.value.is_registration_open !== false);
+        }
+    }
 
     async function fetchVoters() {
         setLoading(true);
@@ -97,6 +124,31 @@ export default function VoterManagement() {
         }
     }
 
+    const exportToCSV = () => {
+        const headers = ['Nama', 'NIK', 'Alamat', 'Kode Undangan', 'Kehadiran', 'Waktu Hadir'];
+        const csvContent = [
+            headers.join(','),
+            ...voters.map(v => [
+                `"${v.name}"`,
+                `"${v.nik || ''}"`,
+                `"${v.address || ''}"`,
+                `"${v.invitation_code}"`,
+                v.is_present ? 'Hadir' : 'Belum Hadir',
+                v.is_present ? (v as any).present_at : ''
+            ].join(','))
+        ].join('\n');
+
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        const url = URL.createObjectURL(blob);
+        link.setAttribute('href', url);
+        link.setAttribute('download', `daftar_pemilih_aprt2026_${new Date().toISOString().split('T')[0]}.csv`);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
     const filteredVoters = voters.filter(v =>
         v.name.toLowerCase().includes(search.toLowerCase()) ||
         v.nik?.includes(search) ||
@@ -114,6 +166,10 @@ export default function VoterManagement() {
                     <p className="text-slate-500 font-medium mt-1">Kelola data DPT, verifikasi kehadiran, dan cetak undangan warga.</p>
                 </div>
                 <div className="flex gap-3">
+                    <Button variant="outline" onClick={exportToCSV} className="rounded-2xl h-12 px-6 font-bold shadow-sm hover:bg-slate-50 transition-all border-slate-200">
+                        <Download className="mr-2 h-5 w-5 text-emerald-500" />
+                        Export CSV
+                    </Button>
                     <Button variant="outline" onClick={() => setIsImportModalOpen(true)} className="rounded-2xl h-12 px-6 font-bold shadow-sm hover:bg-slate-50 transition-all border-slate-200">
                         <FileUp className="mr-2 h-5 w-5 text-indigo-500" />
                         Import CSV
@@ -219,23 +275,28 @@ export default function VoterManagement() {
                                 </div>
 
                                 <div className="grid grid-cols-2 gap-3">
-                                    <Button
-                                        variant={voter.is_present ? "outline" : "default"}
-                                        onClick={() => togglePresence(voter.id, voter.is_present)}
-                                        className={cn(
-                                            "rounded-2xl font-black text-xs uppercase tracking-widest h-12 transition-all",
-                                            voter.is_present
-                                                ? "border-rose-200 text-rose-500 hover:bg-rose-50 hover:text-rose-600"
-                                                : "bg-emerald-600 hover:bg-emerald-700 shadow-lg shadow-emerald-200 hover:scale-105"
-                                        )}
-                                    >
-                                        {voter.is_present ? (
-                                            <><XCircle className="mr-2 h-4 w-4" /> Batal Hadir</>
-                                        ) : (
-                                            <><CheckCircle2 className="mr-2 h-4 w-4" /> Tandai Hadir</>
-                                        )}
-                                    </Button>
-                                    <Button variant="secondary" className="rounded-2xl border-none bg-slate-50 text-slate-500 font-black text-xs uppercase tracking-widest h-12 hover:bg-primary/10 hover:text-primary transition-all">
+                                    {isRegistrationOpen && (
+                                        <Button
+                                            variant={voter.is_present ? "outline" : "default"}
+                                            onClick={() => togglePresence(voter.id, voter.is_present)}
+                                            className={cn(
+                                                "rounded-2xl font-black text-xs uppercase tracking-widest h-12 transition-all",
+                                                voter.is_present
+                                                    ? "border-rose-200 text-rose-500 hover:bg-rose-50 hover:text-rose-600"
+                                                    : "bg-emerald-600 hover:bg-emerald-700 shadow-lg shadow-emerald-200 hover:scale-105"
+                                            )}
+                                        >
+                                            {voter.is_present ? (
+                                                <><XCircle className="mr-2 h-4 w-4" /> Batal Hadir</>
+                                            ) : (
+                                                <><CheckCircle2 className="mr-2 h-4 w-4" /> Tandai Hadir</>
+                                            )}
+                                        </Button>
+                                    )}
+                                    <Button variant="secondary" className={cn(
+                                        "rounded-2xl border-none bg-slate-50 text-slate-500 font-black text-xs uppercase tracking-widest h-12 hover:bg-primary/10 hover:text-primary transition-all",
+                                        !isRegistrationOpen && "col-span-2"
+                                    )}>
                                         <Printer className="mr-2 h-4 w-4" /> Undangan
                                     </Button>
                                 </div>
@@ -258,7 +319,13 @@ export default function VoterManagement() {
             </div>
 
             {/* Modals */}
-            <VoterImport isOpen={isImportModalOpen} onClose={() => { setIsImportModalOpen(false); fetchVoters(); }} />
+            {isImportModalOpen && (
+                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
+                    <div className="w-full max-w-xl">
+                        <VoterImport onComplete={() => { setIsImportModalOpen(false); fetchVoters(); }} />
+                    </div>
+                </div>
+            )}
 
             {isAddModalOpen && (
                 <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">

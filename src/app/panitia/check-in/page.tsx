@@ -7,6 +7,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/com
 import { Button } from '@/components/ui/button';
 import { CheckCircle2, XCircle, User, Clock, AlertTriangle, QrCode } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { Lock } from 'lucide-react';
 
 interface Voter {
     id: string;
@@ -33,9 +34,47 @@ export default function CheckInInterface() {
     const [result, setResult] = useState<CheckInResult | null>(null);
     const [processing, setProcessing] = useState(false);
     const [recentCheckIns, setRecentCheckIns] = useState<RecentCheckIn[]>([]);
+    const [isRegistrationOpen, setIsRegistrationOpen] = useState(true);
+
+    // Initial check for registration status
+    useState(() => {
+        supabase
+            .from('settings')
+            .select('value')
+            .eq('id', 'election_config')
+            .single()
+            .then(({ data }) => {
+                if (data?.value) {
+                    // Default to true if undefined to prevent lockout on legacy config
+                    setIsRegistrationOpen(data.value.is_registration_open !== false);
+                }
+            });
+
+        // Real-time listener for settings
+        const sub = supabase
+            .channel('checkin_settings')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'settings', filter: 'id=eq.election_config' }, (payload: any) => {
+                if (payload.new?.value) {
+                    setIsRegistrationOpen(payload.new.value.is_registration_open !== false);
+                }
+            })
+            .subscribe();
+
+        return () => { supabase.removeChannel(sub); };
+    });
 
     async function handleScan(voterId: string) {
         if (processing) return;
+
+        if (!isRegistrationOpen) {
+            setResult({
+                success: false,
+                message: 'Pendaftaran Check-in telah DITUTUP oleh panitia.'
+            });
+            playErrorSound();
+            setTimeout(() => setResult(null), 3000);
+            return;
+        }
 
         setProcessing(true);
         setResult(null);
@@ -146,12 +185,25 @@ export default function CheckInInterface() {
                 </div>
             </header>
 
+            {!isRegistrationOpen && (
+                <div className="mb-8 p-6 bg-rose-50 border-2 border-dashed border-rose-200 rounded-[2rem] flex items-center justify-center gap-4 animate-pulse">
+                    <div className="w-12 h-12 bg-rose-100 rounded-full flex items-center justify-center text-rose-500">
+                        <Lock size={24} />
+                    </div>
+                    <div>
+                        <h3 className="text-lg font-black text-rose-900 uppercase tracking-widest">Pendaftaran Ditutup</h3>
+                        <p className="text-rose-700 font-medium">Scanning QR Code tidak akan diproses saat ini.</p>
+                    </div>
+                </div>
+            )}
+
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Scanner Section */}
                 <div className="lg:col-span-2">
                     <QRScanner
                         onScanSuccess={handleScan}
                         onScanError={(error) => console.error('Scanner error:', error)}
+                        disabled={!isRegistrationOpen}
                     />
 
                     {/* Result Display */}

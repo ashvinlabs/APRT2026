@@ -28,6 +28,7 @@ const menuItems = [
     { name: 'Hitung Suara', icon: Vote, href: '/panitia/tally' },
     { name: 'Cetak Undangan', icon: Printer, href: '/panitia/invitations' },
     { name: 'Log Aktivitas', icon: History, href: '/panitia/staff' },
+    { name: 'Pengaturan', icon: Settings, href: '/panitia/settings' },
 ];
 
 export default function Sidebar() {

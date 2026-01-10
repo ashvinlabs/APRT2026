@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
-import { Users, UserCheck, CheckCircle2, AlertCircle, Loader2, TrendingUp, Calendar, Info } from 'lucide-react';
+import { Users, UserCheck, CheckCircle2, AlertCircle, Loader2, TrendingUp, Calendar, Info, Printer } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 
@@ -15,6 +16,10 @@ interface Stats {
     }[];
     total_valid_votes: number;
     total_invalid_votes: number;
+    config: {
+        title: string;
+        location: string;
+    };
 }
 
 interface Candidate {
@@ -55,6 +60,13 @@ export default function LiveDashboard() {
             const { data: candData, error: candError } = await supabase.from('candidates').select('*').order('display_order', { ascending: true });
             if (candError) throw candError;
             setCandidates(candData || []);
+
+            // Subscribe to settings changes
+            supabase
+                .channel('settings_dashboard')
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'settings', filter: 'id=eq.election_config' }, () => refreshStats())
+                .subscribe();
+
             await refreshStats();
         } catch (err) {
             console.error('Dashboard Error:', err);
@@ -82,12 +94,19 @@ export default function LiveDashboard() {
             }
         });
 
+        const { data: configData } = await supabase
+            .from('settings')
+            .select('value')
+            .eq('id', 'election_config')
+            .single();
+
         setStats({
             total_voters: totalVoters || 0,
             present_voters: presentVoters || 0,
             votes: Object.entries(voteCounts).map(([id, count]) => ({ candidate_id: id, count })),
             total_valid_votes: valid,
-            total_invalid_votes: invalid
+            total_invalid_votes: invalid,
+            config: configData?.value || { title: 'REKAPITULASI LIVE', location: 'Pemilihan Ketua RT' }
         });
     }
 
@@ -106,22 +125,46 @@ export default function LiveDashboard() {
                     <div className="inline-flex items-center gap-2 px-3 py-1 bg-primary/10 text-primary rounded-full text-xs font-black tracking-widest uppercase mb-4">
                         <TrendingUp size={14} /> Real-time Monitoring
                     </div>
-                    <h1 className="text-5xl md:text-6xl font-black text-slate-900 tracking-tight">
-                        REKAPITULASI <span className="text-primary">LIVE</span>
+                    <h1 className="text-5xl md:text-6xl font-black text-slate-900 tracking-tight uppercase">
+                        {stats?.config.title.split(' ').map((word, i, arr) =>
+                            i === arr.length - 1 ? <span key={i} className="text-primary ml-4">{word}</span> : word + ' '
+                        )}
                     </h1>
-                    <p className="text-xl text-slate-500 font-medium mt-2">Pemilihan Ketua RT 12 • Pelem Kidul - Baturetno</p>
+                    <p className="text-xl text-slate-500 font-medium mt-2">{stats?.config.location}</p>
                 </div>
 
-                <div className="flex items-center gap-4 bg-white p-4 rounded-3xl shadow-xl shadow-slate-200/50 border border-slate-100 ring-1 ring-slate-200/5 hover-premium">
-                    <div className="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-600">
-                        <Calendar size={24} />
-                    </div>
-                    <div className="pr-4">
-                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Hari Pemilihan</p>
-                        <p className="text-lg font-black text-slate-900 leading-tight">10 Januari 2026</p>
+                <div className="flex gap-4 no-print">
+                    <Button
+                        onClick={() => window.print()}
+                        variant="outline"
+                        className="rounded-2xl h-14 px-8 font-black gap-2 shadow-sm border-slate-200 hover:bg-slate-50 transition-all active:scale-95"
+                    >
+                        <Printer size={20} className="text-primary" />
+                        Cetak Laporan
+                    </Button>
+                    <div className="flex items-center gap-4 bg-white p-4 rounded-3xl shadow-xl shadow-slate-200/50 border border-slate-100 ring-1 ring-slate-200/5 hover-premium">
+                        <div className="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-600">
+                            <Calendar size={24} />
+                        </div>
+                        <div className="pr-4">
+                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Hari Pemilihan</p>
+                            <p className="text-lg font-black text-slate-900 leading-tight">10 Januari 2026</p>
+                        </div>
                     </div>
                 </div>
             </header>
+
+            <style jsx global>{`
+                @media print {
+                    .no-print { display: none !important; }
+                    aside { display: none !important; }
+                    main { padding: 0 !important; margin: 0 !important; width: 100% !important; }
+                    body { background: white !important; }
+                    .animate-fade-in { animation: none !important; }
+                    .shadow-xl, .shadow-2xl { box-shadow: none !important; border: 1px solid #e2e8f0 !important; }
+                    .rounded-[2.5rem] { border-radius: 1rem !important; }
+                }
+            `}</style>
 
             {/* Top Stats Row */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">

@@ -81,3 +81,21 @@ CREATE POLICY "Allow Public Upload" ON storage.objects FOR INSERT WITH CHECK (bu
 CREATE POLICY "Allow Public Update" ON storage.objects FOR UPDATE USING (bucket_id = 'candidates');
 CREATE POLICY "Allow Public Select" ON storage.objects FOR SELECT USING (bucket_id = 'candidates');
 CREATE POLICY "Allow Public Delete" ON storage.objects FOR DELETE USING (bucket_id = 'candidates');
+-- 6. Settings Table for Dynamic Config
+CREATE TABLE IF NOT EXISTS public.settings (
+    id TEXT PRIMARY KEY,
+    value JSONB NOT NULL,
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_by UUID REFERENCES auth.users(id)
+);
+
+-- Seed initial settings
+INSERT INTO public.settings (id, value) 
+VALUES 
+    ('election_config', '{"title": "Pemilihan Ketua RT 12", "location": "Pelem Kidul - Baturetno", "is_voting_open": true}')
+ON CONFLICT (id) DO NOTHING;
+
+-- RLS for settings
+ALTER TABLE public.settings ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Enable read for everyone" ON public.settings FOR SELECT USING (true);
+CREATE POLICY "Enable all for authenticated users" ON public.settings FOR ALL TO authenticated USING (true);
