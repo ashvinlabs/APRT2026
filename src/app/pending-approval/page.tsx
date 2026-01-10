@@ -32,6 +32,7 @@ export default function PendingApprovalPage() {
                     <div className="bg-slate-100 rounded-lg p-4 text-sm text-slate-600 leading-relaxed border border-slate-200">
                         <p>
                             Mohon tunggu hingga Administrator menyetujui akun Anda. Anda akan menerima notifikasi email setelah akun diaktifkan.
+                            <strong> Sementara itu, silakan konfirmasi email Anda melalui email yang telah kami kirimkan ke alamat email yang Anda gunakan untuk mendaftar.</strong>
                         </p>
                     </div>
                     <Button
