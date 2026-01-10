@@ -76,7 +76,10 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 
         const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
             if (event === 'PASSWORD_RECOVERY') {
-                window.location.href = '/reset-password';
+                // Preserving the hash is critical because it contains the access_token
+                if (window.location.pathname !== '/reset-password') {
+                    window.location.href = '/reset-password' + window.location.hash;
+                }
                 return;
             }
 
@@ -90,7 +93,9 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 
         // Also check hash manually for some edge cases (e.g. initial load with invite)
         if (window.location.hash && (window.location.hash.includes('type=invite') || window.location.hash.includes('type=recovery'))) {
-            window.location.href = '/reset-password';
+            if (window.location.pathname !== '/reset-password') {
+                window.location.href = '/reset-password' + window.location.hash;
+            }
         }
 
         return () => subscription.unsubscribe();
