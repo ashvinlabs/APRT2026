@@ -39,4 +39,5 @@ Follow these steps to deploy the APRT2026 application to Vercel and Supabase.
 ## 4. Troubleshooting
 
 - **CORS Issues**: If you encounter CORS issues, ensure your Vercel URL is added to the "Additional Redirect URLs" in **Supabase > Authentication > URL Configuration**.
+- **Custom Domains**: If you want to use a custom domain (e.g., `aprt12-2026.ashvinlabs.com`), follow the [Custom Domain Guide](file:///g:/Work/ashvinlabs/repos/APRT2026/docs/custom-domain.md).
 - **RLS Errors**: Ensure all RLS policies in `schema.sql` are correctly applied.
