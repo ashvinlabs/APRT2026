@@ -74,6 +74,9 @@ export default function UserManager() {
     const [updating, setUpdating] = useState<string | null>(null);
     const [editingMember, setEditingMember] = useState<StaffMember | null>(null);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+    const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+    const [newStaff, setNewStaff] = useState({ name: '', email: '', password: '' });
+    const [isCreating, setIsCreating] = useState(false);
 
     useEffect(() => {
         fetchData();
@@ -214,6 +217,56 @@ export default function UserManager() {
         }
     }
 
+    async function handleAddStaff() {
+        if (!newStaff.name || !newStaff.email || !newStaff.password) {
+            alert('Semua field harus diisi!');
+            return;
+        }
+
+        if (newStaff.password.length < 6) {
+            alert('Password minimal 6 karakter!');
+            return;
+        }
+
+        setIsCreating(true);
+
+        try {
+            // Create auth user with email confirmation
+            const { data: authData, error: authError } = await supabase.auth.signUp({
+                email: newStaff.email,
+                password: newStaff.password,
+                options: {
+                    data: {
+                        full_name: newStaff.name
+                    },
+                    emailRedirectTo: window.location.origin + '/reset-password'
+                }
+            });
+
+            if (authError) throw authError;
+
+            if (!authData.user) {
+                throw new Error('Gagal membuat akun');
+            }
+
+            // The trigger will automatically create the staff record
+            alert(`Akun berhasil dibuat! Email verifikasi telah dikirim ke ${newStaff.email}`);
+
+            // Reset form and close modal
+            setNewStaff({ name: '', email: '', password: '' });
+            setIsAddModalOpen(false);
+
+            // Refresh staff list
+            await fetchData();
+
+        } catch (error: any) {
+            console.error('Error creating staff:', error);
+            alert('Gagal membuat akun: ' + error.message);
+        } finally {
+            setIsCreating(false);
+        }
+    }
+
     if (loading) {
         return (
             <div className="flex flex-col items-center justify-center p-20 gap-4">
@@ -274,7 +327,11 @@ export default function UserManager() {
                             </CardTitle>
                             <CardDescription className="font-medium">Kelola hak akses dan persetujuan akun petugas baru.</CardDescription>
                         </div>
-                        <Button className="rounded-full gap-2 border-2 border-primary/20 hover:bg-primary/5" variant="outline">
+                        <Button
+                            onClick={() => setIsAddModalOpen(true)}
+                            className="rounded-full gap-2 border-2 border-primary/20 hover:bg-primary/5"
+                            variant="outline"
+                        >
                             <UserPlus size={18} />
                             Tambah Manual
                         </Button>
@@ -462,6 +519,73 @@ export default function UserManager() {
                                 className="flex-1 h-14 rounded-2xl font-black bg-blue-600 hover:bg-blue-700 shadow-xl shadow-blue-100"
                             >
                                 {updating ? <Loader2 className="animate-spin" /> : 'Simpan Perubahan'}
+                            </Button>
+                        </DialogFooter>
+                    </form>
+                </DialogContent>
+            </Dialog>
+
+            {/* Add Staff Modal */}
+            <Dialog open={isAddModalOpen} onOpenChange={setIsAddModalOpen}>
+                <DialogContent className="sm:max-w-[425px] rounded-[2rem] p-0 overflow-hidden border-none shadow-2xl">
+                    <DialogHeader className="p-8 bg-gradient-to-br from-primary to-blue-600 text-white relative">
+                        <div className="absolute top-0 right-0 p-8 opacity-10 pointer-events-none">
+                            <UserPlus size={100} />
+                        </div>
+                        <DialogTitle className="text-2xl font-black italic tracking-tighter uppercase">Tambah <span className="text-blue-200">Petugas</span></DialogTitle>
+                        <DialogDescription className="text-white/80 font-bold">Buat akun petugas baru dengan email dan password.</DialogDescription>
+                    </DialogHeader>
+                    <form onSubmit={(e) => { e.preventDefault(); handleAddStaff(); }} className="p-8 space-y-6 bg-white">
+                        <div className="space-y-2">
+                            <Label className="text-xs font-black text-slate-400 uppercase tracking-widest">Nama Lengkap</Label>
+                            <Input
+                                value={newStaff.name}
+                                onChange={e => setNewStaff(prev => ({ ...prev, name: e.target.value }))}
+                                className="h-14 rounded-2xl bg-slate-50 border-slate-200 font-bold text-lg focus-visible:ring-primary/20"
+                                placeholder="Contoh: Ahmad Santoso"
+                                required
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label className="text-xs font-black text-slate-400 uppercase tracking-widest">Email</Label>
+                            <Input
+                                type="email"
+                                value={newStaff.email}
+                                onChange={e => setNewStaff(prev => ({ ...prev, email: e.target.value }))}
+                                className="h-14 rounded-2xl bg-slate-50 border-slate-200 font-mono text-sm focus-visible:ring-primary/20"
+                                placeholder="email@example.com"
+                                required
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label className="text-xs font-black text-slate-400 uppercase tracking-widest">Password</Label>
+                            <Input
+                                type="password"
+                                value={newStaff.password}
+                                onChange={e => setNewStaff(prev => ({ ...prev, password: e.target.value }))}
+                                className="h-14 rounded-2xl bg-slate-50 border-slate-200 font-mono text-sm focus-visible:ring-primary/20"
+                                placeholder="Minimal 6 karakter"
+                                required
+                                minLength={6}
+                            />
+                            <p className="text-xs text-slate-400 font-medium">Password akan dikirim via email verifikasi</p>
+                        </div>
+                        <DialogFooter className="pt-4 flex gap-3">
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                onClick={() => setIsAddModalOpen(false)}
+                                disabled={isCreating}
+                                className="flex-1 h-14 rounded-2xl font-black text-slate-400"
+                            >
+                                Batal
+                            </Button>
+                            <Button
+                                type="submit"
+                                disabled={isCreating}
+                                className="flex-1 h-14 rounded-2xl font-black bg-primary hover:bg-primary/90 shadow-xl shadow-primary/20"
+                            >
+                                {isCreating ? <Loader2 className="animate-spin" /> : 'Buat Akun'}
                             </Button>
                         </DialogFooter>
                     </form>
