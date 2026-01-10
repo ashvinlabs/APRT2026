@@ -14,7 +14,8 @@ import {
     ChevronRight,
     ExternalLink,
     Loader2,
-    Link2Off
+    Link2Off,
+    DownloadCloud
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -32,6 +33,7 @@ export default function GoogleSyncModal({ voters, onClose }: GoogleSyncModalProp
     const [isActive, setIsActive] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
     const [isSyncing, setIsSyncing] = useState(false);
+    const [isPulling, setIsPulling] = useState(false);
     const [status, setStatus] = useState<{ type: 'success' | 'error', text: string } | null>(null);
     const [copied, setCopied] = useState(false);
     const [step, setStep] = useState(1);
@@ -110,12 +112,10 @@ export default function GoogleSyncModal({ voters, onClose }: GoogleSyncModalProp
         setStatus(null);
 
         try {
-            const response = await fetch(webhookUrl, {
+            await fetch(webhookUrl, {
                 method: 'POST',
-                mode: 'no-cors', // Apps Script is often picky about CORS
-                headers: {
-                    'Content-Type': 'application/json',
-                },
+                mode: 'no-cors',
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     action: 'sync_voters',
                     timestamp: new Date().toISOString(),
@@ -128,34 +128,85 @@ export default function GoogleSyncModal({ voters, onClose }: GoogleSyncModalProp
                     }))
                 })
             });
-
-            // With no-cors, we can't reliably read the response, but we assume success if no error thrown
             setStatus({ type: 'success', text: 'Data berhasil dikirim ke Google Sheets!' });
         } catch (err: any) {
-            console.error('Sync error:', err);
             setStatus({ type: 'error', text: 'Terjadi kesalahan saat sinkronisasi.' });
         } finally {
             setIsSyncing(false);
         }
     }
 
-    const appsScriptCode = `function doPost(e) {
+    async function handlePull() {
+        if (!webhookUrl) return;
+        setIsPulling(true);
+        setStatus(null);
+
+        try {
+            const response = await fetch(webhookUrl + '?action=get_voters');
+            const data = await response.json();
+
+            if (!Array.isArray(data)) throw new Error('Invalid data format from Sheets');
+
+            const formattedVoters = data.map(v => ({
+                name: v.name || v.nama,
+                nik: v.nik?.toString() || '',
+                address: v.address || v.alamat || '',
+                invitation_code: v.invitation_code || v.kode || `RT12-${Math.random().toString(36).substring(2, 8).toUpperCase()}`,
+                is_present: v.is_present ?? false // Default to false if not specified
+            }));
+
+            const { error } = await supabase.from('voters').upsert(formattedVoters, {
+                onConflict: 'nik' // Upsert based on NIK
+            });
+
+            if (error) throw error;
+
+            setStatus({ type: 'success', text: `Berhasil menarik ${data.length} data dari Google Sheets!` });
+            // Optional: trigger a global refresh or local update
+            window.location.reload();
+        } catch (err: any) {
+            console.error('Pull error:', err);
+            setStatus({ type: 'error', text: 'Gagal menarik data. Pastikan Apps Script sudah di-deploy dengan doGet.' });
+        } finally {
+            setIsPulling(false);
+        }
+    }
+
+    const appsScriptCode = `function doGet(e) {
+  const action = e.parameter.action;
+  if (action === 'get_voters') {
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+    const data = sheet.getDataRange().getValues();
+    const headers = data[0].map(h => h.toString().toLowerCase());
+    
+    const json = data.slice(1).map(row => {
+      let obj = {};
+      headers.forEach((h, i) => {
+        // Map common headers
+        if (h === 'nama' || h === 'name') obj.name = row[i];
+        if (h === 'nik') obj.nik = row[i]?.toString() || '';
+        if (h === 'alamat' || h === 'address') obj.address = row[i];
+        if (h === 'kode' || h === 'code') obj.invitation_code = row[i]?.toString() || '';
+        if (h === 'status') obj.is_present = (row[i]?.toString().toLowerCase() === 'hadir');
+      });
+      return obj;
+    });
+    
+    return ContentService.createTextOutput(JSON.stringify(json)).setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+function doPost(e) {
   const contents = JSON.parse(e.postData.contents);
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
   
   if (contents.action === 'sync_voters') {
-    // Clear existing data (optional, or append)
-    // sheet.clear(); 
-    
     const rows = contents.data.map(v => [
       v.nama, v.nik, v.alamat, v.kode, v.status, contents.timestamp
     ]);
     
-    // Header
     sheet.getRange(1, 1, 1, 6).setValues([["Nama", "NIK", "Alamat", "Kode", "Status", "Last Sync"]]);
     sheet.getRange(1, 1, 1, 6).setFontWeight("bold");
-    
-    // Data
     sheet.getRange(2, 1, rows.length, 6).setValues(rows);
     
     return ContentService.createTextOutput("Success").setMimeType(ContentService.MimeType.TEXT);
@@ -183,7 +234,7 @@ export default function GoogleSyncModal({ voters, onClose }: GoogleSyncModalProp
                     </div>
                     <div>
                         <h2 className="text-2xl font-black tracking-tight leading-none">Google Sheets</h2>
-                        <p className="text-white/60 font-medium text-sm mt-1">Sinkronisasi Data Real-time</p>
+                        <p className="text-white/60 font-medium text-sm mt-1">Sinkronisasi Dua Arah</p>
                     </div>
                 </div>
 
@@ -198,7 +249,6 @@ export default function GoogleSyncModal({ voters, onClose }: GoogleSyncModalProp
             </header>
 
             <CardContent className="p-8 space-y-8">
-                {/* Stepper */}
                 <div className="flex items-center justify-between px-4">
                     {[1, 2].map((i) => (
                         <div key={i} className="flex items-center gap-2">
@@ -226,13 +276,14 @@ export default function GoogleSyncModal({ voters, onClose }: GoogleSyncModalProp
                                 <Settings size={80} />
                             </div>
                             <h3 className="text-sm font-black text-blue-900 uppercase tracking-widest mb-3 flex items-center gap-2">
-                                <ExternalLink size={14} /> Cara Setup:
+                                <ExternalLink size={14} /> Cara Setup (2-Way):
                             </h3>
                             <ol className="text-xs text-blue-800/80 space-y-2 font-medium list-decimal ml-4">
                                 <li>Buka Google Sheet anda, klik <strong>Extensions {'>'} Apps Script</strong>.</li>
                                 <li>Copy-paste kode di bawah ini ke editor.</li>
-                                <li>Klik <strong>Deploy {'>'} New Deployment</strong>.</li>
-                                <li>Pilih type <strong>Web App</strong>, set "Who has access" ke <strong>Anyone</strong>.</li>
+                                <li>Klik **Deploy {'>'} New Deployment**.</li>
+                                <li>Pilih type **Web App**, set "Who has access" ke **Anyone**.</li>
+                                <li>Konfirmasi izin Google (Klik Advanced {'>'} Go to... if requested).</li>
                                 <li>Copy Web App URL dan paste di bawah ini.</li>
                             </ol>
                         </div>
@@ -291,40 +342,58 @@ export default function GoogleSyncModal({ voters, onClose }: GoogleSyncModalProp
                         <div className="flex flex-col items-center justify-center text-center p-8 rounded-3xl bg-slate-50 border-2 border-dashed border-slate-200">
                             <div className={cn(
                                 "w-20 h-20 rounded-[2rem] flex items-center justify-center transition-all duration-500 shadow-xl mb-4",
-                                isSyncing ? "bg-blue-600 text-white animate-pulse" : "bg-emerald-50 text-emerald-500"
+                                (isSyncing || isPulling) ? "bg-blue-600 text-white animate-pulse" : "bg-emerald-50 text-emerald-500"
                             )}>
-                                {isSyncing ? <RefreshCw size={32} className="animate-spin" /> : <CheckCircle2 size={32} />}
+                                {(isSyncing || isPulling) ? <RefreshCw size={32} className="animate-spin" /> : <CheckCircle2 size={32} />}
                             </div>
-                            <h3 className="text-xl font-black text-slate-900 leading-tight">Siap Sinkronisasi</h3>
+                            <h3 className="text-xl font-black text-slate-900 leading-tight">
+                                {isPulling ? 'Menarik Data...' : isSyncing ? 'Mengirim Data...' : 'Siap Sinkronisasi'}
+                            </h3>
                             <p className="text-sm text-slate-500 font-medium max-w-[280px] mt-1">
-                                Klik tombol di bawah untuk mengirim <strong>{voters.length} data pemilih</strong> ke Google Sheets anda.
+                                {isPulling
+                                    ? 'Mengambil data terbaru dari Google Sheets anda...'
+                                    : `Pilih arah sinkronisasi untuk ${voters.length} data pemilih.`}
                             </p>
                         </div>
 
-                        <div className="flex gap-3">
-                            <Button
-                                variant="outline"
-                                onClick={() => setStep(1)}
-                                className="h-14 w-14 rounded-2xl text-slate-400 border-slate-200"
-                                title="Pengaturan"
-                            >
-                                <Settings size={24} />
-                            </Button>
-                            <Button
-                                variant="outline"
-                                onClick={disconnect}
-                                className="h-14 w-14 rounded-2xl text-rose-400 border-slate-200 hover:text-rose-600 hover:bg-rose-50"
-                                title="Putuskan Link"
-                            >
-                                <Link2Off size={24} />
-                            </Button>
+                        <div className="grid grid-cols-1 gap-3">
                             <Button
                                 onClick={handleSync}
-                                disabled={isSyncing}
-                                className="flex-1 h-14 rounded-2xl font-black text-lg bg-indigo-600 hover:bg-indigo-700 shadow-xl shadow-indigo-100"
+                                disabled={isSyncing || isPulling}
+                                className="h-14 rounded-2xl font-black text-lg bg-indigo-600 hover:bg-indigo-700 shadow-xl shadow-indigo-100 w-full"
                             >
-                                {isSyncing ? 'Sedang Sinkron...' : 'Sync ke Sheets Sekarang'}
+                                {isSyncing ? 'Sedang Sinkron...' : 'Kirim ke Google Sheets (Push)'}
                             </Button>
+
+                            <Button
+                                variant="outline"
+                                onClick={handlePull}
+                                disabled={isSyncing || isPulling}
+                                className="h-14 rounded-2xl font-black text-lg border-slate-200 text-slate-600 hover:bg-slate-50 w-full"
+                            >
+                                {isPulling ? 'Sedang Menarik...' : (
+                                    <span className="flex items-center gap-2">
+                                        <DownloadCloud size={20} /> Tarik dari Sheets (Pull)
+                                    </span>
+                                )}
+                            </Button>
+
+                            <div className="flex gap-3 mt-2">
+                                <Button
+                                    variant="ghost"
+                                    onClick={() => setStep(1)}
+                                    className="flex-1 h-12 rounded-xl text-slate-400 font-bold text-xs uppercase tracking-widest"
+                                >
+                                    <Settings size={16} className="mr-2" /> Pengaturan
+                                </Button>
+                                <Button
+                                    variant="ghost"
+                                    onClick={disconnect}
+                                    className="flex-1 h-12 rounded-xl text-rose-400 font-bold text-xs uppercase tracking-widest hover:text-rose-600"
+                                >
+                                    <Link2Off size={16} className="mr-2" /> Putuskan Link
+                                </Button>
+                            </div>
                         </div>
                     </div>
                 )}
