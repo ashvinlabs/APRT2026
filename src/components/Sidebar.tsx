@@ -134,9 +134,30 @@ export default function Sidebar() {
             </nav>
 
             {/* Footer */}
-            <div className="p-3 border-t border-slate-200/60">
+            <div className="p-3 border-t border-slate-200/60 mt-auto">
                 {user ? (
-                    <LogoutButton hideText={!isOpen} />
+                    <div className="flex flex-col gap-2">
+                        {/* User Profile Card */}
+                        <div className={cn(
+                            "flex items-center gap-3 p-2 rounded-2xl bg-white border border-slate-100 shadow-sm transition-all duration-300",
+                            !isOpen && "justify-center border-none bg-transparent shadow-none"
+                        )}>
+                            <div className="w-8 h-8 rounded-lg bg-indigo-50 flex items-center justify-center text-primary font-bold text-xs shrink-0 border border-primary/10">
+                                {user.name?.[0]?.toUpperCase() || 'U'}
+                            </div>
+                            {isOpen && (
+                                <div className="flex flex-col min-w-0">
+                                    <span className="text-[11px] font-black text-slate-800 truncate leading-none mb-1 uppercase tracking-tight">
+                                        {user.name}
+                                    </span>
+                                    <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest truncate">
+                                        {user.roles?.[0]?.name || 'Petugas'}
+                                    </span>
+                                </div>
+                            )}
+                        </div>
+                        <LogoutButton hideText={!isOpen} />
+                    </div>
                 ) : (
                     <Link
                         href="/login"
