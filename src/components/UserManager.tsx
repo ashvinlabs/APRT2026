@@ -106,16 +106,26 @@ export default function UserManager() {
 
     async function toggleApproval(member: StaffMember) {
         setUpdating(member.id);
-        const { error } = await supabase
+
+        console.log('toggleApproval called', { member, currentUser: user });
+
+        const { data, error } = await supabase
             .from('staff')
             .update({
                 is_approved: !member.is_approved,
-                approved_by: user?.id,
+                approved_by: user?.user_id, // Use user_id (auth ID), not id (staff ID)
                 approved_at: !member.is_approved ? new Date().toISOString() : null
             })
-            .eq('id', member.id);
+            .eq('id', member.id)
+            .select();
 
-        if (!error) {
+        console.log('Update result:', { data, error });
+
+        if (error) {
+            console.error('Update failed:', error);
+            alert(`Gagal update status: ${error.message}`);
+        } else {
+            console.log('Update successful!', data);
             setStaff(prev => prev.map(s => s.id === member.id ? { ...s, is_approved: !s.is_approved } : s));
         }
         setUpdating(null);
@@ -244,7 +254,7 @@ export default function UserManager() {
                                                 member.is_approved ? "bg-emerald-500 hover:bg-emerald-600" : "bg-slate-100 text-slate-400"
                                             )}
                                         >
-                                            {member.is_approved ? "Terpuji" : "Tertunda"}
+                                            {member.is_approved ? "Approved" : "Not Approved"}
                                         </Badge>
                                     </TableCell>
                                     <TableCell>

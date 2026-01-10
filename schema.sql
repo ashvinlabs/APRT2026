@@ -9,6 +9,7 @@ CREATE TABLE IF NOT EXISTS public.staff (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   user_id UUID UNIQUE REFERENCES auth.users(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
+  email TEXT,
   is_approved BOOLEAN DEFAULT FALSE,
   approved_by UUID REFERENCES auth.users(id),
   approved_at TIMESTAMP WITH TIME ZONE,
@@ -144,11 +145,98 @@ ALTER TABLE public.settings ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Enable read for everyone" ON public.roles;
 CREATE POLICY "Enable read for everyone" ON public.roles FOR SELECT USING (true);
 
+-- Role Management Policies (Discord-style)
+DROP POLICY IF EXISTS "Enable role management for authorized staff" ON public.roles;
+CREATE POLICY "Enable role management for authorized staff" ON public.roles 
+FOR ALL TO authenticated 
+USING (
+    EXISTS (
+        SELECT 1 FROM staff s
+        JOIN staff_roles sr ON s.id = sr.staff_id
+        JOIN roles r ON sr.role_id = r.id
+        WHERE s.user_id = auth.uid()
+        AND s.is_approved = true
+        AND (r.permissions->>'all' = 'true' OR r.permissions->>'manage_roles' = 'true')
+    )
+)
+WITH CHECK (
+    EXISTS (
+        SELECT 1 FROM staff s
+        JOIN staff_roles sr ON s.id = sr.staff_id
+        JOIN roles r ON sr.role_id = r.id
+        WHERE s.user_id = auth.uid()
+        AND s.is_approved = true
+        AND (r.permissions->>'all' = 'true' OR r.permissions->>'manage_roles' = 'true')
+    )
+);
+
 DROP POLICY IF EXISTS "Enable read for everyone" ON public.staff_roles;
 CREATE POLICY "Enable read for everyone" ON public.staff_roles FOR SELECT USING (true);
 
+-- Staff Roles Management Policies
+DROP POLICY IF EXISTS "Enable staff role assignment" ON public.staff_roles;
+CREATE POLICY "Enable staff role assignment" ON public.staff_roles
+FOR ALL TO authenticated
+USING (
+    EXISTS (
+        SELECT 1 FROM staff s
+        JOIN staff_roles sr ON s.id = sr.staff_id
+        JOIN roles r ON sr.role_id = r.id
+        WHERE s.user_id = auth.uid()
+        AND s.is_approved = true
+        AND (r.permissions->>'all' = 'true' OR r.permissions->>'manage_staff' = 'true' OR r.permissions->>'view_logs' = 'true')
+    )
+)
+WITH CHECK (
+    EXISTS (
+        SELECT 1 FROM staff s
+        JOIN staff_roles sr ON s.id = sr.staff_id
+        JOIN roles r ON sr.role_id = r.id
+        WHERE s.user_id = auth.uid()
+        AND s.is_approved = true
+        AND (r.permissions->>'all' = 'true' OR r.permissions->>'manage_staff' = 'true' OR r.permissions->>'view_logs' = 'true')
+    )
+);
+
 DROP POLICY IF EXISTS "Enable read for everyone" ON public.staff;
 CREATE POLICY "Enable read for everyone" ON public.staff FOR SELECT USING (true);
+
+-- Staff Management Policies - UPDATE only (for approval)
+DROP POLICY IF EXISTS "Enable staff approval and management" ON public.staff;
+CREATE POLICY "Enable staff approval and management" ON public.staff
+FOR UPDATE TO authenticated
+USING (
+    EXISTS (
+        SELECT 1 FROM staff s
+        JOIN staff_roles sr ON s.id = sr.staff_id
+        JOIN roles r ON sr.role_id = r.id
+        WHERE s.user_id = auth.uid()
+        AND s.is_approved = true
+        AND (r.permissions->>'all' = 'true' OR r.permissions->>'manage_staff' = 'true' OR r.permissions->>'view_logs' = 'true')
+    )
+)
+WITH CHECK (true); -- Allow updating any staff record if user has permission
+
+-- INSERT policy for new staff (registration)
+DROP POLICY IF EXISTS "Enable staff registration" ON public.staff;
+CREATE POLICY "Enable staff registration" ON public.staff
+FOR INSERT TO authenticated
+WITH CHECK (true); -- Allow anyone authenticated to register as staff
+
+-- DELETE policy for staff
+DROP POLICY IF EXISTS "Enable staff deletion" ON public.staff;
+CREATE POLICY "Enable staff deletion" ON public.staff
+FOR DELETE TO authenticated
+USING (
+    EXISTS (
+        SELECT 1 FROM staff s
+        JOIN staff_roles sr ON s.id = sr.staff_id
+        JOIN roles r ON sr.role_id = r.id
+        WHERE s.user_id = auth.uid()
+        AND s.is_approved = true
+        AND (r.permissions->>'all' = 'true' OR r.permissions->>'manage_staff' = 'true')
+    )
+);
 
 -- Allow authenticated users to manage data based on roles
 DROP POLICY IF EXISTS "Authorized staff manage voters" ON public.voters;
@@ -180,10 +268,13 @@ CREATE POLICY "Enable all for authenticated users" ON public.settings FOR ALL TO
 -- Seed initial roles
 INSERT INTO public.roles (name, permissions, color, priority) VALUES 
 ('Super Admin', '{"all": true}', '#ef4444', 100),
-('Administrator', '{"manage_voters": true, "manage_votes": true, "manage_settings": true, "view_logs": true}', '#f59e0b', 80),
+('Administrator', '{"manage_staff": true, "manage_roles": true, "manage_voters": true, "manage_votes": true, "manage_settings": true, "view_logs": true}', '#f59e0b', 80),
 ('Controller', '{"manage_voters": true, "manage_votes": true, "manage_invitations": true}', '#3b82f6', 60),
 ('Officer', '{"check_in": true, "mark_presence": true}', '#10b981', 40)
-ON CONFLICT (name) DO NOTHING;
+ON CONFLICT (name) DO UPDATE SET 
+    permissions = EXCLUDED.permissions,
+    color = EXCLUDED.color,
+    priority = EXCLUDED.priority;
 
 -- Seed initial settings
 INSERT INTO public.settings (id, value) 

@@ -5,7 +5,7 @@
 export interface Permissions {
     all?: boolean;
     manage_staff?: boolean;
-    manage_roles?: boolean;
+    manage_roles?: boolean; // Role management
     manage_voters?: boolean;
     edit_voters?: boolean;
     manage_votes?: boolean;

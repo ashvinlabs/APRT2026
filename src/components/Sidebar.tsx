@@ -36,7 +36,7 @@ const menuItems: MenuItem[] = [
     { name: 'Data Pemilih', icon: Users, href: '/panitia/voters', permission: 'manage_voters' },
     { name: 'Hitung Suara', icon: Vote, href: '/panitia/tally', permission: 'manage_votes' },
     { name: 'Cetak Undangan', icon: Printer, href: '/panitia/invitations', permission: 'manage_invitations' },
-    { name: 'Log Aktivitas', icon: History, href: '/panitia/staff', permission: 'view_logs' },
+    { name: 'Manajemen Tim', icon: Users, href: '/panitia/staff', permission: 'view_logs' },
     { name: 'Pengaturan', icon: Settings, href: '/panitia/settings', permission: 'manage_settings' },
 ];
 
