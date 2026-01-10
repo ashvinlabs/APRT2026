@@ -159,8 +159,6 @@ export default function GoogleSyncModal({ voters: initialVoters, onClose }: Goog
                     display_order: index + 1 // Always follow Sheet order
                 };
 
-                if (dbMatch?.id) voterObj.id = dbMatch.id;
-
                 finalVotersToUpsert.push(voterObj);
             });
 
