@@ -15,7 +15,7 @@ import {
     ExternalLink,
     Loader2,
     Link2Off,
-    DownloadCloud
+    ArrowRightLeft
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -28,12 +28,12 @@ interface GoogleSyncModalProps {
     onClose: () => void;
 }
 
-export default function GoogleSyncModal({ voters, onClose }: GoogleSyncModalProps) {
+export default function GoogleSyncModal({ voters: initialVoters, onClose }: GoogleSyncModalProps) {
     const [webhookUrl, setWebhookUrl] = useState('');
     const [isActive, setIsActive] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
     const [isSyncing, setIsSyncing] = useState(false);
-    const [isPulling, setIsPulling] = useState(false);
+    const [syncProgress, setSyncProgress] = useState('');
     const [status, setStatus] = useState<{ type: 'success' | 'error', text: string } | null>(null);
     const [copied, setCopied] = useState(false);
     const [step, setStep] = useState(1);
@@ -89,10 +89,8 @@ export default function GoogleSyncModal({ voters, onClose }: GoogleSyncModalProp
         setIsSaving(true);
         const { error } = await supabase
             .from('settings')
-            .upsert({
-                id: 'google_sync_config',
-                value: null
-            });
+            .delete()
+            .eq('id', 'google_sync_config');
 
         setIsSaving(false);
         if (error) {
@@ -106,12 +104,76 @@ export default function GoogleSyncModal({ voters, onClose }: GoogleSyncModalProp
         }
     }
 
-    async function handleSync() {
+    async function handleSmartSync() {
         if (!webhookUrl) return;
         setIsSyncing(true);
         setStatus(null);
+        setSyncProgress('Menghubungi Google Sheets...');
 
         try {
+            // 1. Pull Data from Sheets
+            setSyncProgress('Menarik data dari Sheets...');
+            const response = await fetch(webhookUrl + '?action=get_voters');
+            const sheetData = await response.json();
+
+            if (!Array.isArray(sheetData)) throw new Error('Format data Google Sheets tidak valid.');
+
+            // 2. Fetch current App Data
+            setSyncProgress('Mencocokkan identitas (NIK)...');
+            const { data: dbVoters, error: fetchError } = await supabase
+                .from('voters')
+                .select('*');
+
+            if (fetchError) throw fetchError;
+
+            // 3. Merge Logic & Identity Mapping
+            const finalVotersToUpsert: any[] = [];
+            const sheetNiks = new Set();
+
+            sheetData.forEach((row, index) => {
+                const nik = row.nik?.toString().trim();
+                if (!nik) return; // Skip rows without NIK as per user rule
+
+                sheetNiks.add(nik);
+                const existing = dbVoters.find(v => v.nik?.toString().trim() === nik);
+
+                const voterObj = {
+                    id: existing?.id || undefined, // Keep ID if exists to preserve logs/metadata
+                    name: row.name || row.nama,
+                    nik: nik,
+                    address: row.address || row.alamat || '',
+                    invitation_code: row.invitation_code || row.kode || existing?.invitation_code || `RT12-${Math.random().toString(36).substring(2, 8).toUpperCase()}`,
+                    is_present: row.is_present ?? existing?.is_present ?? false,
+                    display_order: index + 1 // Maintain strict ordering parity
+                };
+
+                finalVotersToUpsert.push(voterObj);
+            });
+
+            // 4. Identify records to DELETE (App data NOT in Sheet)
+            const niksToDelete = dbVoters
+                .filter(v => v.nik && !sheetNiks.has(v.nik.toString().trim()))
+                .map(v => v.id);
+
+            // 5. Database Batch Sync
+            setSyncProgress('Memperbarui database aplikasi...');
+
+            // Delete missing
+            if (niksToDelete.length > 0) {
+                await supabase.from('voters').delete().in('id', niksToDelete);
+            }
+
+            // Upsert merged/new
+            const { error: upsertError } = await supabase.from('voters').upsert(finalVotersToUpsert, {
+                onConflict: 'nik'
+            });
+
+            if (upsertError) throw upsertError;
+
+            // 6. Push finalized data back to Sheets (Ensure parity of codes/sequence)
+            setSyncProgress('Sinkronisasi balik ke Sheets...');
+            const { data: updatedVoters } = await supabase.from('voters').select('*').order('display_order', { ascending: true });
+
             await fetch(webhookUrl, {
                 method: 'POST',
                 mode: 'no-cors',
@@ -119,7 +181,7 @@ export default function GoogleSyncModal({ voters, onClose }: GoogleSyncModalProp
                 body: JSON.stringify({
                     action: 'sync_voters',
                     timestamp: new Date().toISOString(),
-                    data: voters.map(v => ({
+                    data: (updatedVoters || []).map(v => ({
                         nama: v.name,
                         nik: v.nik,
                         alamat: v.address,
@@ -128,47 +190,15 @@ export default function GoogleSyncModal({ voters, onClose }: GoogleSyncModalProp
                     }))
                 })
             });
-            setStatus({ type: 'success', text: 'Data berhasil dikirim ke Google Sheets!' });
+
+            setStatus({ type: 'success', text: 'Smart Sync Berhasil! Data Aplikasi dan Sheets sekarang identik.' });
+            setTimeout(() => window.location.reload(), 2000);
         } catch (err: any) {
-            setStatus({ type: 'error', text: 'Terjadi kesalahan saat sinkronisasi.' });
+            console.error('Smart Sync Error:', err);
+            setStatus({ type: 'error', text: 'Gagal Sinkronisasi: ' + err.message });
         } finally {
             setIsSyncing(false);
-        }
-    }
-
-    async function handlePull() {
-        if (!webhookUrl) return;
-        setIsPulling(true);
-        setStatus(null);
-
-        try {
-            const response = await fetch(webhookUrl + '?action=get_voters');
-            const data = await response.json();
-
-            if (!Array.isArray(data)) throw new Error('Invalid data format from Sheets');
-
-            const formattedVoters = data.map(v => ({
-                name: v.name || v.nama,
-                nik: v.nik?.toString() || '',
-                address: v.address || v.alamat || '',
-                invitation_code: v.invitation_code || v.kode || `RT12-${Math.random().toString(36).substring(2, 8).toUpperCase()}`,
-                is_present: v.is_present ?? false // Default to false if not specified
-            }));
-
-            const { error } = await supabase.from('voters').upsert(formattedVoters, {
-                onConflict: 'nik' // Upsert based on NIK
-            });
-
-            if (error) throw error;
-
-            setStatus({ type: 'success', text: `Berhasil menarik ${data.length} data dari Google Sheets!` });
-            // Optional: trigger a global refresh or local update
-            window.location.reload();
-        } catch (err: any) {
-            console.error('Pull error:', err);
-            setStatus({ type: 'error', text: 'Gagal menarik data. Pastikan Apps Script sudah di-deploy dengan doGet.' });
-        } finally {
-            setIsPulling(false);
+            setSyncProgress('');
         }
     }
 
@@ -182,7 +212,6 @@ export default function GoogleSyncModal({ voters, onClose }: GoogleSyncModalProp
     const json = data.slice(1).map(row => {
       let obj = {};
       headers.forEach((h, i) => {
-        // Map common headers
         if (h === 'nama' || h === 'name') obj.name = row[i];
         if (h === 'nik') obj.nik = row[i]?.toString() || '';
         if (h === 'alamat' || h === 'address') obj.address = row[i];
@@ -190,7 +219,7 @@ export default function GoogleSyncModal({ voters, onClose }: GoogleSyncModalProp
         if (h === 'status') obj.is_present = (row[i]?.toString().toLowerCase() === 'hadir');
       });
       return obj;
-    });
+    }).filter(v => v.nik); // Only return rows with NIK
     
     return ContentService.createTextOutput(JSON.stringify(json)).setMimeType(ContentService.MimeType.JSON);
   }
@@ -233,8 +262,8 @@ function doPost(e) {
                         <Cloud size={28} />
                     </div>
                     <div>
-                        <h2 className="text-2xl font-black tracking-tight leading-none">Google Sheets</h2>
-                        <p className="text-white/60 font-medium text-sm mt-1">Sinkronisasi Dua Arah</p>
+                        <h2 className="text-2xl font-black tracking-tight leading-none">Smart Sync</h2>
+                        <p className="text-white/60 font-medium text-sm mt-1">Sinkronisasi 2-Arah Terintegrasi</p>
                     </div>
                 </div>
 
@@ -262,7 +291,7 @@ function doPost(e) {
                                 "text-[10px] font-black uppercase tracking-widest",
                                 step === i ? "text-slate-800" : "text-slate-300"
                             )}>
-                                {i === 1 ? 'Konfigurasi' : 'Sinkronisasi'}
+                                {i === 1 ? 'Konfigurasi' : 'Pusat Sinkron'}
                             </span>
                             {i === 1 && <ChevronRight size={14} className="text-slate-200 mx-4" />}
                         </div>
@@ -276,15 +305,15 @@ function doPost(e) {
                                 <Settings size={80} />
                             </div>
                             <h3 className="text-sm font-black text-blue-900 uppercase tracking-widest mb-3 flex items-center gap-2">
-                                <ExternalLink size={14} /> Cara Setup (2-Way):
+                                <ExternalLink size={14} /> Cara Setup (Smart Sync):
                             </h3>
                             <ol className="text-xs text-blue-800/80 space-y-2 font-medium list-decimal ml-4">
                                 <li>Buka Google Sheet anda, klik <strong>Extensions {'>'} Apps Script</strong>.</li>
                                 <li>Copy-paste kode di bawah ini ke editor.</li>
                                 <li>Klik **Deploy {'>'} New Deployment**.</li>
                                 <li>Pilih type **Web App**, set "Who has access" ke **Anyone**.</li>
-                                <li>Konfirmasi izin Google (Klik Advanced {'>'} Go to... if requested).</li>
-                                <li>Copy Web App URL dan paste di bawah ini.</li>
+                                <li>Lengkapi izin Google hingga muncul Web App URL.</li>
+                                <li>Paste URL tersebut di bawah ini.</li>
                             </ol>
                         </div>
 
@@ -339,43 +368,35 @@ function doPost(e) {
                     </div>
                 ) : (
                     <div className="space-y-6 animate-in fade-in slide-in-from-right-4 py-4">
-                        <div className="flex flex-col items-center justify-center text-center p-8 rounded-3xl bg-slate-50 border-2 border-dashed border-slate-200">
+                        <div className="flex flex-col items-center justify-center text-center p-8 rounded-3xl bg-slate-50 border-2 border-dashed border-slate-200 relative overflow-hidden">
                             <div className={cn(
-                                "w-20 h-20 rounded-[2rem] flex items-center justify-center transition-all duration-500 shadow-xl mb-4",
-                                (isSyncing || isPulling) ? "bg-blue-600 text-white animate-pulse" : "bg-emerald-50 text-emerald-500"
+                                "w-20 h-20 rounded-[2rem] flex items-center justify-center transition-all duration-500 shadow-xl mb-4 relative z-10",
+                                isSyncing ? "bg-blue-600 text-white animate-pulse" : "bg-emerald-50 text-emerald-500"
                             )}>
-                                {(isSyncing || isPulling) ? <RefreshCw size={32} className="animate-spin" /> : <CheckCircle2 size={32} />}
+                                {isSyncing ? <RefreshCw size={32} className="animate-spin" /> : <CheckCircle2 size={32} />}
                             </div>
-                            <h3 className="text-xl font-black text-slate-900 leading-tight">
-                                {isPulling ? 'Menarik Data...' : isSyncing ? 'Mengirim Data...' : 'Siap Sinkronisasi'}
+                            <h3 className="text-xl font-black text-slate-900 leading-tight relative z-10">
+                                {isSyncing ? 'Proses Sinkronisasi...' : 'Aplikasi & Sheets Terhubung'}
                             </h3>
-                            <p className="text-sm text-slate-500 font-medium max-w-[280px] mt-1">
-                                {isPulling
-                                    ? 'Mengambil data terbaru dari Google Sheets anda...'
-                                    : `Pilih arah sinkronisasi untuk ${voters.length} data pemilih.`}
+                            <p className="text-sm text-slate-500 font-medium max-w-[280px] mt-1 relative z-10">
+                                {isSyncing
+                                    ? syncProgress
+                                    : 'Aplikasi akan mencocokkan identitas (NIK) dan urutan baris agar tepat sama dengan Google Sheets Anda.'}
                             </p>
                         </div>
 
                         <div className="grid grid-cols-1 gap-3">
                             <Button
-                                onClick={handleSync}
-                                disabled={isSyncing || isPulling}
-                                className="h-14 rounded-2xl font-black text-lg bg-indigo-600 hover:bg-indigo-700 shadow-xl shadow-indigo-100 w-full"
+                                onClick={handleSmartSync}
+                                disabled={isSyncing}
+                                className="h-16 rounded-2xl font-black text-xl bg-blue-600 hover:bg-blue-700 shadow-xl shadow-blue-100 w-full group transition-all active:scale-95"
                             >
-                                {isSyncing ? 'Sedang Sinkron...' : 'Kirim ke Google Sheets (Push)'}
-                            </Button>
-
-                            <Button
-                                variant="outline"
-                                onClick={handlePull}
-                                disabled={isSyncing || isPulling}
-                                className="h-14 rounded-2xl font-black text-lg border-slate-200 text-slate-600 hover:bg-slate-50 w-full"
-                            >
-                                {isPulling ? 'Sedang Menarik...' : (
-                                    <span className="flex items-center gap-2">
-                                        <DownloadCloud size={20} /> Tarik dari Sheets (Pull)
-                                    </span>
+                                {isSyncing ? (
+                                    <Loader2 className="animate-spin mr-2" />
+                                ) : (
+                                    <ArrowRightLeft className="mr-2 group-hover:rotate-180 transition-transform duration-500" />
                                 )}
+                                {isSyncing ? 'Mohon Tunggu...' : 'Sinkronisasikan Sekarang'}
                             </Button>
 
                             <div className="flex gap-3 mt-2">

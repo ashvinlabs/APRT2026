@@ -86,7 +86,7 @@ export default function VoterManagement() {
         const { data, error } = await supabase
             .from('voters')
             .select('*')
-            .order('name', { ascending: true });
+            .order('display_order', { ascending: true });
 
         if (!error) {
             setVoters(data || []);
