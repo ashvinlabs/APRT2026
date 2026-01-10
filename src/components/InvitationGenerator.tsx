@@ -39,10 +39,14 @@ export default function InvitationGenerator() {
 
   const filteredVoters = voters.filter(v =>
     v.name.toLowerCase().includes(search.toLowerCase()) ||
-    v.invitation_code?.toLowerCase().includes(search.toLowerCase())
+    v.invitation_code?.toLowerCase().includes(search.toLowerCase()) ||
+    v.nik?.toLowerCase().includes(search.toLowerCase()) ||
+    v.address?.toLowerCase().includes(search.toLowerCase())
   );
 
   const handlePrint = () => {
+    // We already use CSS @media print to hide non-print elements.
+    // The print-grid renders filteredVoters.
     window.print();
   };
 
@@ -50,14 +54,14 @@ export default function InvitationGenerator() {
 
   return (
     <div style={{ padding: '2rem' }}>
-      <header className="no-print" style={{ marginBottom: '2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+      <header className="no-print" style={{ marginBottom: '3rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border)', paddingBottom: '1.5rem' }}>
         <div>
-          <h1 className="heading-m">Generator Undangan QR</h1>
-          <p style={{ color: 'var(--secondary)' }}>Cetak QR Code untuk setiap warga sebagai tiket masuk TPS.</p>
+          <h1 className="heading-l" style={{ margin: 0 }}>Cetak Undangan <span style={{ color: 'var(--primary)' }}>Warga</span></h1>
+          <p style={{ color: 'var(--secondary)', marginTop: '0.5rem', fontWeight: 500 }}>Generate QR Code dan cetak kartu undangan pemilihan.</p>
         </div>
-        <button className="btn btn-primary" onClick={handlePrint} style={{ gap: '0.5rem' }}>
-          <Printer size={20} />
-          <span>Cetak Semua</span>
+        <button className="btn btn-primary" onClick={handlePrint} style={{ gap: '0.75rem', height: '3.5rem', padding: '0 2rem', borderRadius: '1rem', fontWeight: 800, fontSize: '1rem', boxShadow: '0 10px 15px -3px rgba(var(--primary-rgb), 0.3)' }}>
+          <Printer size={22} />
+          <span>Cetak {filteredVoters.length} Undangan</span>
         </button>
       </header>
 

@@ -27,29 +27,54 @@ export async function proxy(request: NextRequest) {
         }
     );
 
-    // IMPORTANT: Avoid writing any logic between createServerClient and
-    // supabase.auth.getUser(). A simple mistake can make it very hard to debug
-    // issues with users being signed out unnecessarily.
-
     const {
         data: { user },
     } = await supabase.auth.getUser();
 
     const isPanitiaRoute = request.nextUrl.pathname.startsWith('/panitia');
     const isLoginPage = request.nextUrl.pathname === '/login';
+    const isRegisterPage = request.nextUrl.pathname === '/register';
+    const isPendingPage = request.nextUrl.pathname === '/pending-approval';
 
-    if (isPanitiaRoute && !user) {
-        // no user, potentially respond by redirecting the user to the login page
-        const url = request.nextUrl.clone();
-        url.pathname = '/login';
-        return NextResponse.redirect(url);
+    // If visiting panitia routes, check for auth and approval
+    if (isPanitiaRoute) {
+        if (!user) {
+            const url = request.nextUrl.clone();
+            url.pathname = '/login';
+            return NextResponse.redirect(url);
+        }
+
+        // Fetch staff profile to check approval
+        const { data: staff } = await supabase
+            .from('staff')
+            .select('is_approved')
+            .eq('user_id', user.id)
+            .single();
+
+        if (!staff || !staff.is_approved) {
+            const url = request.nextUrl.clone();
+            url.pathname = '/pending-approval';
+            return NextResponse.redirect(url);
+        }
     }
 
-    if (isLoginPage && user) {
-        // user already logged in, redirect to voters page
-        const url = request.nextUrl.clone();
-        url.pathname = '/panitia/voters';
-        return NextResponse.redirect(url);
+    // If logged in, don't allow visiting login/register/pending-approval if already approved
+    if ((isLoginPage || isRegisterPage || isPendingPage) && user) {
+        const { data: staff } = await supabase
+            .from('staff')
+            .select('is_approved')
+            .eq('user_id', user.id)
+            .single();
+
+        if (staff?.is_approved) {
+            const url = request.nextUrl.clone();
+            url.pathname = '/panitia/voters';
+            return NextResponse.redirect(url);
+        } else if (staff && !isPendingPage) {
+            const url = request.nextUrl.clone();
+            url.pathname = '/pending-approval';
+            return NextResponse.redirect(url);
+        }
     }
 
     return supabaseResponse;

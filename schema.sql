@@ -1,12 +1,35 @@
 -- APRT2026 Supabase Schema Migration
 
+-- ==========================================
+-- 1. TABLES CREATION
+-- ==========================================
+
 -- 1. Table for Panitia/Staff
 CREATE TABLE IF NOT EXISTS public.staff (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   user_id UUID UNIQUE REFERENCES auth.users(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
-  role TEXT DEFAULT 'operator', -- operator, admin
+  is_approved BOOLEAN DEFAULT FALSE,
+  approved_by UUID REFERENCES auth.users(id),
+  approved_at TIMESTAMP WITH TIME ZONE,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- 1.1 Table for Roles (Discord-like)
+CREATE TABLE IF NOT EXISTS public.roles (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name TEXT NOT NULL UNIQUE,
+    permissions JSONB NOT NULL DEFAULT '{}', -- e.g. {"manage_users": true, "manage_roles": true, ...}
+    color TEXT DEFAULT '#94a3b8',
+    priority INT DEFAULT 0, -- Higher number = higher precedence
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 1.2 Junction Table for Staff Roles (Multi-role support)
+CREATE TABLE IF NOT EXISTS public.staff_roles (
+    staff_id UUID REFERENCES public.staff(id) ON DELETE CASCADE,
+    role_id UUID REFERENCES public.roles(id) ON DELETE CASCADE,
+    PRIMARY KEY (staff_id, role_id)
 );
 
 -- 2. Table for Candidates
@@ -50,38 +73,7 @@ CREATE TABLE IF NOT EXISTS public.audit_logs (
     metadata JSONB
 );
 
--- Enable Real-time for votes and voters
-ALTER PUBLICATION supabase_realtime ADD TABLE public.votes;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.voters;
-
--- RLS (Row Level Security) - Basic Setup
--- For a local/internal election project, we might keep it simple or restricted to authenticated users.
-ALTER TABLE public.staff ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.voters ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.candidates ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.votes ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.audit_logs ENABLE ROW LEVEL SECURITY;
-
--- Allow all authenticated users (Staff) to read/write during the election
-CREATE POLICY "Enable all for authenticated users" ON public.voters FOR ALL TO authenticated USING (true);
-CREATE POLICY "Enable all for authenticated users" ON public.votes FOR ALL TO authenticated USING (true);
-CREATE POLICY "Enable write for authenticated users" ON public.audit_logs FOR INSERT TO authenticated WITH CHECK (true);
-CREATE POLICY "Enable read for authenticated users" ON public.audit_logs FOR SELECT TO authenticated USING (true);
-CREATE POLICY "Enable read for everyone" ON public.candidates FOR SELECT USING (true);
-CREATE POLICY "Enable insert for testing" ON public.candidates FOR INSERT WITH CHECK (true);
-CREATE POLICY "Enable update for testing" ON public.candidates FOR UPDATE USING (true);
-CREATE POLICY "Enable delete for testing" ON public.candidates FOR DELETE USING (true);
-
--- --- SUPABASE STORAGE POLICIES --- --
--- 1. Pastikan Anda membuat bucket bernama 'candidates' di Dashboard Supabase (Storage menu)
--- 2. Atur bucket menjadi 'Public'
-
--- Jalankan SQL di bawah ini untuk mengizinkan upload tanpa login (untuk testing):
-CREATE POLICY "Allow Public Upload" ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'candidates');
-CREATE POLICY "Allow Public Update" ON storage.objects FOR UPDATE USING (bucket_id = 'candidates');
-CREATE POLICY "Allow Public Select" ON storage.objects FOR SELECT USING (bucket_id = 'candidates');
-CREATE POLICY "Allow Public Delete" ON storage.objects FOR DELETE USING (bucket_id = 'candidates');
--- 6. Settings Table for Dynamic Config
+-- 6. Settings Table
 CREATE TABLE IF NOT EXISTS public.settings (
     id TEXT PRIMARY KEY,
     value JSONB NOT NULL,
@@ -89,13 +81,109 @@ CREATE TABLE IF NOT EXISTS public.settings (
     updated_by UUID REFERENCES auth.users(id)
 );
 
+-- ==========================================
+-- 2. REAL-TIME CONFIGURATION
+-- ==========================================
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_publication_tables 
+        WHERE pubname = 'supabase_realtime' AND schemaname = 'public' AND tablename = 'votes'
+    ) THEN
+        ALTER PUBLICATION supabase_realtime ADD TABLE public.votes;
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_publication_tables 
+        WHERE pubname = 'supabase_realtime' AND schemaname = 'public' AND tablename = 'voters'
+    ) THEN
+        ALTER PUBLICATION supabase_realtime ADD TABLE public.voters;
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_publication_tables 
+        WHERE pubname = 'supabase_realtime' AND schemaname = 'public' AND tablename = 'staff'
+    ) THEN
+        ALTER PUBLICATION supabase_realtime ADD TABLE public.staff;
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_publication_tables 
+        WHERE pubname = 'supabase_realtime' AND schemaname = 'public' AND tablename = 'roles'
+    ) THEN
+        ALTER PUBLICATION supabase_realtime ADD TABLE public.roles;
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_publication_tables 
+        WHERE pubname = 'supabase_realtime' AND schemaname = 'public' AND tablename = 'staff_roles'
+    ) THEN
+        ALTER PUBLICATION supabase_realtime ADD TABLE public.staff_roles;
+    END IF;
+END $$;
+
+-- ==========================================
+-- 3. ROW LEVEL SECURITY (RLS)
+-- ==========================================
+
+ALTER TABLE public.staff ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.roles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.staff_roles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.voters ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.candidates ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.votes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.audit_logs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.settings ENABLE ROW LEVEL SECURITY;
+
+-- ==========================================
+-- 4. POLICIES
+-- ==========================================
+
+-- Default Policies
+DROP POLICY IF EXISTS "Enable read for everyone" ON public.roles;
+CREATE POLICY "Enable read for everyone" ON public.roles FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "Enable read for everyone" ON public.staff_roles;
+CREATE POLICY "Enable read for everyone" ON public.staff_roles FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "Enable read for everyone" ON public.staff;
+CREATE POLICY "Enable read for everyone" ON public.staff FOR SELECT USING (true);
+
+-- Allow authenticated users to manage data based on roles
+DROP POLICY IF EXISTS "Authorized staff manage voters" ON public.voters;
+CREATE POLICY "Authorized staff manage voters" ON public.voters FOR ALL TO authenticated USING (true);
+
+DROP POLICY IF EXISTS "Authorized staff manage votes" ON public.votes;
+CREATE POLICY "Authorized staff manage votes" ON public.votes FOR ALL TO authenticated USING (true);
+
+DROP POLICY IF EXISTS "Enable write for authenticated" ON public.audit_logs;
+CREATE POLICY "Enable write for authenticated" ON public.audit_logs FOR INSERT TO authenticated WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Enable read for everyone" ON public.candidates;
+CREATE POLICY "Enable read for everyone" ON public.candidates FOR SELECT USING (true);
+
+-- Settings Policies
+DROP POLICY IF EXISTS "Enable read for everyone" ON public.settings;
+CREATE POLICY "Enable read for everyone" ON public.settings FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "Enable all for authenticated users" ON public.settings;
+CREATE POLICY "Enable all for authenticated users" ON public.settings FOR ALL TO authenticated USING (true);
+
+-- ==========================================
+-- 5. SEED DATA
+-- ==========================================
+
+-- Seed initial roles
+INSERT INTO public.roles (name, permissions, color, priority) VALUES 
+('Super Admin', '{"all": true}', '#ef4444', 100),
+('Administrator', '{"manage_voters": true, "manage_votes": true, "manage_settings": true, "view_logs": true}', '#f59e0b', 80),
+('Controller', '{"manage_voters": true, "manage_votes": true, "manage_invitations": true}', '#3b82f6', 60),
+('Officer', '{"check_in": true, "mark_presence": true}', '#10b981', 40)
+ON CONFLICT (name) DO NOTHING;
+
 -- Seed initial settings
 INSERT INTO public.settings (id, value) 
 VALUES 
-    ('election_config', '{"title": "Pemilihan Ketua RT 12", "location": "Pelem Kidul - Baturetno", "is_voting_open": true}')
+    ('election_config', '{"title": "Pemilihan Ketua RT 12", "location": "Pelem Kidul - Baturetno", "is_voting_open": true, "is_registration_open": true, "date": "2026-01-10"}')
 ON CONFLICT (id) DO NOTHING;
-
--- RLS for settings
-ALTER TABLE public.settings ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Enable read for everyone" ON public.settings FOR SELECT USING (true);
-CREATE POLICY "Enable all for authenticated users" ON public.settings FOR ALL TO authenticated USING (true);

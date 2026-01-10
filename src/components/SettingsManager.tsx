@@ -14,8 +14,19 @@ import {
     Loader2,
     UserPlus,
     UserX,
-    Calendar
+    Calendar,
+    Users,
+    Trash2,
+    Image as ImageIcon,
+    Plus
 } from 'lucide-react';
+
+interface Candidate {
+    id: string;
+    name: string;
+    photo_url: string | null;
+    display_order: number;
+}
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -40,11 +51,73 @@ export default function SettingsManager() {
     });
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
+    const [candidates, setCandidates] = useState<Candidate[]>([]);
     const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
 
     useEffect(() => {
         fetchSettings();
+        fetchCandidates();
     }, []);
+
+    async function fetchCandidates() {
+        const { data, error } = await supabase
+            .from('candidates')
+            .select('*')
+            .order('display_order', { ascending: true });
+
+        if (!error) setCandidates(data || []);
+    }
+
+    async function addCandidate() {
+        const newCandidate = {
+            name: 'Kandidat Baru',
+            display_order: candidates.length + 1
+        };
+        const { data, error } = await supabase.from('candidates').insert(newCandidate).select();
+        if (error) setMessage({ type: 'error', text: 'Gagal menambah kandidat: ' + error.message });
+        else if (data) setCandidates([...candidates, data[0]]);
+    }
+
+    async function updateCandidate(id: string, updates: Partial<Candidate>) {
+        const { error } = await supabase.from('candidates').update(updates).eq('id', id);
+        if (error) setMessage({ type: 'error', text: 'Gagal update kandidat: ' + error.message });
+        else setCandidates(prev => prev.map(c => c.id === id ? { ...c, ...updates } : c));
+    }
+
+    async function deleteCandidate(id: string) {
+        if (!confirm('Hapus kandidat ini?')) return;
+        const { error } = await supabase.from('candidates').delete().eq('id', id);
+        if (error) setMessage({ type: 'error', text: 'Gagal hapus kandidat: ' + error.message });
+        else setCandidates(candidates.filter(c => c.id !== id));
+    }
+
+    async function handlePhotoUpload(candidateId: string, file: File) {
+        if (!file.type.startsWith('image/')) {
+            alert('File harus berupa gambar.');
+            return;
+        }
+        setSaving(true);
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${candidateId}-${Math.random()}.${fileExt}`;
+        const filePath = `photos/${fileName}`;
+
+        const { error: uploadError } = await supabase.storage
+            .from('candidates')
+            .upload(filePath, file);
+
+        if (uploadError) {
+            setMessage({ type: 'error', text: 'Gagal upload foto: ' + uploadError.message });
+            setSaving(false);
+            return;
+        }
+
+        const { data: { publicUrl } } = supabase.storage
+            .from('candidates')
+            .getPublicUrl(filePath);
+
+        await updateCandidate(candidateId, { photo_url: publicUrl });
+        setSaving(false);
+    }
 
     async function fetchSettings() {
         setLoading(true);
@@ -260,6 +333,94 @@ export default function SettingsManager() {
                         >
                             {config.is_voting_open ? 'TUTUP VOTING SEKARANG' : 'BUKA AKSES VOTING'}
                         </Button>
+                    </CardContent>
+                </Card>
+
+                {/* Candidate Management Section */}
+                <Card className="col-span-full border-none shadow-2xl shadow-slate-200/50 rounded-[2.5rem] overflow-hidden bg-white ring-1 ring-slate-100">
+                    <CardHeader className="p-8 border-b border-slate-50 flex flex-row items-center justify-between">
+                        <div>
+                            <CardTitle className="text-2xl font-black text-slate-900 flex items-center gap-3">
+                                <Users size={28} className="text-indigo-500" />
+                                Manajemen Kandidat
+                            </CardTitle>
+                            <CardDescription>Tambah, edit, atau hapus kandidat pemilihan.</CardDescription>
+                        </div>
+                        <Button onClick={addCandidate} className="rounded-xl font-bold gap-2">
+                            <Plus size={18} />
+                            Tambah Kandidat
+                        </Button>
+                    </CardHeader>
+                    <CardContent className="p-8">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            {candidates.map((candidate) => (
+                                <div key={candidate.id} className="relative group p-6 rounded-3xl bg-slate-50 border border-slate-100 hover:border-primary/20 hover:bg-white hover:shadow-xl transition-all duration-300">
+                                    <button
+                                        onClick={() => deleteCandidate(candidate.id)}
+                                        className="absolute top-4 right-4 p-2 text-slate-300 hover:text-rose-500 transition-colors z-10"
+                                    >
+                                        <Trash2 size={20} />
+                                    </button>
+
+                                    <div className="flex flex-col items-center gap-6">
+                                        <div className="relative w-32 h-44 rounded-2xl overflow-hidden shadow-lg border-4 border-white ring-1 ring-slate-200 group-hover:scale-105 transition-transform">
+                                            {candidate.photo_url ? (
+                                                <img src={candidate.photo_url} alt={candidate.name} className="w-full h-full object-cover" />
+                                            ) : (
+                                                <div className="w-full h-full bg-slate-100 flex flex-col items-center justify-center text-slate-300">
+                                                    <ImageIcon size={32} />
+                                                    <span className="text-[10px] font-black uppercase tracking-tighter mt-2">No Photo</span>
+                                                </div>
+                                            )}
+                                            <label className="absolute inset-0 bg-slate-900/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
+                                                <input
+                                                    type="file"
+                                                    accept="image/*"
+                                                    hidden
+                                                    onChange={(e) => e.target.files?.[0] && handlePhotoUpload(candidate.id, e.target.files[0])}
+                                                />
+                                                <span className="text-white text-[10px] font-black uppercase tracking-widest">Ganti Foto</span>
+                                            </label>
+                                        </div>
+
+                                        <div className="w-full space-y-3">
+                                            <div className="space-y-1">
+                                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Nama Lengkap</label>
+                                                <Input
+                                                    value={candidate.name}
+                                                    onChange={(e) => {
+                                                        const newName = e.target.value;
+                                                        setCandidates(prev => prev.map(c => c.id === candidate.id ? { ...c, name: newName } : c));
+                                                    }}
+                                                    onBlur={(e) => updateCandidate(candidate.id, { name: e.target.value })}
+                                                    className="h-11 rounded-xl bg-white border-slate-200 font-bold focus-visible:ring-primary/20"
+                                                />
+                                            </div>
+                                            <div className="space-y-1">
+                                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Urutan Tampil (No. Urut)</label>
+                                                <Input
+                                                    type="number"
+                                                    value={candidate.display_order}
+                                                    onChange={(e) => {
+                                                        const newOrder = parseInt(e.target.value);
+                                                        setCandidates(prev => prev.map(c => c.id === candidate.id ? { ...c, display_order: newOrder } : c));
+                                                    }}
+                                                    onBlur={(e) => updateCandidate(candidate.id, { display_order: parseInt(e.target.value) })}
+                                                    className="h-11 rounded-xl bg-white border-slate-200 font-bold focus-visible:ring-primary/20"
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                            {candidates.length === 0 && (
+                                <div className="col-span-full py-12 flex flex-col items-center justify-center text-slate-400 border-2 border-dashed border-slate-100 rounded-3xl">
+                                    <Users size={48} className="opacity-20 mb-4" />
+                                    <p className="font-bold">Belum ada kandidat yang terdaftar</p>
+                                    <p className="text-xs">Klik "Tambah Kandidat" untuk mulai menjaring calon.</p>
+                                </div>
+                            )}
+                        </div>
                     </CardContent>
                 </Card>
             </div>

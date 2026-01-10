@@ -30,6 +30,8 @@ interface RecentCheckIn {
     success: boolean;
 }
 
+import PermissionGuard from '@/components/PermissionGuard';
+
 export default function CheckInInterface() {
     const [result, setResult] = useState<CheckInResult | null>(null);
     const [processing, setProcessing] = useState(false);
@@ -171,110 +173,112 @@ export default function CheckInInterface() {
     }
 
     return (
-        <div className="p-8 max-w-6xl mx-auto">
-            {/* Header */}
-            <header className="mb-8">
-                <div className="flex items-center gap-3 mb-2">
-                    <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
-                        <QrCode size={24} className="text-primary" />
+        <PermissionGuard permission="mark_presence">
+            <div className="p-8 max-w-6xl mx-auto">
+                {/* Header */}
+                <header className="mb-8">
+                    <div className="flex items-center gap-3 mb-2">
+                        <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
+                            <QrCode size={24} className="text-primary" />
+                        </div>
+                        <div>
+                            <h1 className="text-3xl font-black text-slate-900">Check-In Pemilih</h1>
+                            <p className="text-slate-500 font-medium">Scan QR code untuk verifikasi kehadiran</p>
+                        </div>
                     </div>
-                    <div>
-                        <h1 className="text-3xl font-black text-slate-900">Check-In Pemilih</h1>
-                        <p className="text-slate-500 font-medium">Scan QR code untuk verifikasi kehadiran</p>
-                    </div>
-                </div>
-            </header>
+                </header>
 
-            {!isRegistrationOpen && (
-                <div className="mb-8 p-6 bg-rose-50 border-2 border-dashed border-rose-200 rounded-[2rem] flex items-center justify-center gap-4 animate-pulse">
-                    <div className="w-12 h-12 bg-rose-100 rounded-full flex items-center justify-center text-rose-500">
-                        <Lock size={24} />
+                {!isRegistrationOpen && (
+                    <div className="mb-8 p-6 bg-rose-50 border-2 border-dashed border-rose-200 rounded-[2rem] flex items-center justify-center gap-4 animate-pulse">
+                        <div className="w-12 h-12 bg-rose-100 rounded-full flex items-center justify-center text-rose-500">
+                            <Lock size={24} />
+                        </div>
+                        <div>
+                            <h3 className="text-lg font-black text-rose-900 uppercase tracking-widest">Pendaftaran Ditutup</h3>
+                            <p className="text-rose-700 font-medium">Scanning QR Code tidak akan diproses saat ini.</p>
+                        </div>
                     </div>
-                    <div>
-                        <h3 className="text-lg font-black text-rose-900 uppercase tracking-widest">Pendaftaran Ditutup</h3>
-                        <p className="text-rose-700 font-medium">Scanning QR Code tidak akan diproses saat ini.</p>
-                    </div>
-                </div>
-            )}
+                )}
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Scanner Section */}
-                <div className="lg:col-span-2">
-                    <QRScanner
-                        onScanSuccess={handleScan}
-                        onScanError={(error) => console.error('Scanner error:', error)}
-                        disabled={!isRegistrationOpen}
-                    />
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    {/* Scanner Section */}
+                    <div className="lg:col-span-2">
+                        <QRScanner
+                            onScanSuccess={handleScan}
+                            onScanError={(error) => console.error('Scanner error:', error)}
+                            disabled={!isRegistrationOpen}
+                        />
 
-                    {/* Result Display */}
-                    {result && (
-                        <Card className={`mt-6 ${result.success ? 'border-emerald-200 bg-emerald-50' : 'border-rose-200 bg-rose-50'}`}>
-                            <CardContent className="p-6">
-                                <div className="flex items-start gap-4">
-                                    <div className={`w-12 h-12 rounded-full flex items-center justify-center ${result.success ? 'bg-emerald-500' : 'bg-rose-500'}`}>
-                                        {result.success ? <CheckCircle2 size={24} className="text-white" /> : <XCircle size={24} className="text-white" />}
+                        {/* Result Display */}
+                        {result && (
+                            <Card className={`mt-6 ${result.success ? 'border-emerald-200 bg-emerald-50' : 'border-rose-200 bg-rose-50'}`}>
+                                <CardContent className="p-6">
+                                    <div className="flex items-start gap-4">
+                                        <div className={`w-12 h-12 rounded-full flex items-center justify-center ${result.success ? 'bg-emerald-500' : 'bg-rose-500'}`}>
+                                            {result.success ? <CheckCircle2 size={24} className="text-white" /> : <XCircle size={24} className="text-white" />}
+                                        </div>
+                                        <div className="flex-1">
+                                            <h3 className={`text-lg font-bold mb-1 ${result.success ? 'text-emerald-900' : 'text-rose-900'}`}>
+                                                {result.success ? 'Berhasil!' : 'Gagal'}
+                                            </h3>
+                                            <p className={`font-medium mb-3 ${result.success ? 'text-emerald-700' : 'text-rose-700'}`}>
+                                                {result.message}
+                                            </p>
+                                            {result.voter && (
+                                                <div className="bg-white rounded-lg p-4 space-y-2">
+                                                    <div className="flex items-center gap-2">
+                                                        <User size={16} className="text-slate-400" />
+                                                        <span className="font-bold text-slate-900">{result.voter.name}</span>
+                                                    </div>
+                                                    <div className="text-sm text-slate-600">
+                                                        <p>NIK: {result.voter.nik}</p>
+                                                        <p>Alamat: {result.voter.address}</p>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
-                                    <div className="flex-1">
-                                        <h3 className={`text-lg font-bold mb-1 ${result.success ? 'text-emerald-900' : 'text-rose-900'}`}>
-                                            {result.success ? 'Berhasil!' : 'Gagal'}
-                                        </h3>
-                                        <p className={`font-medium mb-3 ${result.success ? 'text-emerald-700' : 'text-rose-700'}`}>
-                                            {result.message}
-                                        </p>
-                                        {result.voter && (
-                                            <div className="bg-white rounded-lg p-4 space-y-2">
-                                                <div className="flex items-center gap-2">
-                                                    <User size={16} className="text-slate-400" />
-                                                    <span className="font-bold text-slate-900">{result.voter.name}</span>
+                                </CardContent>
+                            </Card>
+                        )}
+                    </div>
+
+                    {/* Recent Check-ins */}
+                    <div>
+                        <Card>
+                            <CardHeader>
+                                <CardTitle className="text-lg flex items-center gap-2">
+                                    <Clock size={20} />
+                                    Riwayat Terakhir
+                                </CardTitle>
+                                <CardDescription>10 check-in terbaru</CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                {recentCheckIns.length === 0 ? (
+                                    <div className="text-center py-8 text-slate-400">
+                                        <AlertTriangle size={32} className="mx-auto mb-2 opacity-50" />
+                                        <p className="text-sm">Belum ada check-in</p>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-3">
+                                        {recentCheckIns.map((checkIn, idx) => (
+                                            <div key={idx} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="font-medium text-sm text-slate-900 truncate">{checkIn.name}</p>
+                                                    <p className="text-xs text-slate-500">{checkIn.time}</p>
                                                 </div>
-                                                <div className="text-sm text-slate-600">
-                                                    <p>NIK: {result.voter.nik}</p>
-                                                    <p>Alamat: {result.voter.address}</p>
-                                                </div>
+                                                <Badge variant={checkIn.success ? "default" : "destructive"} className="ml-2">
+                                                    {checkIn.success ? '✓' : '✗'}
+                                                </Badge>
                                             </div>
-                                        )}
+                                        ))}
                                     </div>
-                                </div>
+                                )}
                             </CardContent>
                         </Card>
-                    )}
-                </div>
-
-                {/* Recent Check-ins */}
-                <div>
-                    <Card>
-                        <CardHeader>
-                            <CardTitle className="text-lg flex items-center gap-2">
-                                <Clock size={20} />
-                                Riwayat Terakhir
-                            </CardTitle>
-                            <CardDescription>10 check-in terbaru</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            {recentCheckIns.length === 0 ? (
-                                <div className="text-center py-8 text-slate-400">
-                                    <AlertTriangle size={32} className="mx-auto mb-2 opacity-50" />
-                                    <p className="text-sm">Belum ada check-in</p>
-                                </div>
-                            ) : (
-                                <div className="space-y-3">
-                                    {recentCheckIns.map((checkIn, idx) => (
-                                        <div key={idx} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
-                                            <div className="flex-1 min-w-0">
-                                                <p className="font-medium text-sm text-slate-900 truncate">{checkIn.name}</p>
-                                                <p className="text-xs text-slate-500">{checkIn.time}</p>
-                                            </div>
-                                            <Badge variant={checkIn.success ? "default" : "destructive"} className="ml-2">
-                                                {checkIn.success ? '✓' : '✗'}
-                                            </Badge>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-                        </CardContent>
-                    </Card>
+                    </div>
                 </div>
             </div>
-        </div>
+        </PermissionGuard>
     );
 }

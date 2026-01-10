@@ -24,6 +24,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
+import { useUser } from './UserContext';
 
 interface Voter {
     id: string;
@@ -35,6 +36,7 @@ interface Voter {
 }
 
 export default function VoterManagement() {
+    const { user, hasPermission, isLoading: userLoading } = useUser();
     const [voters, setVoters] = useState<Voter[]>([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
@@ -155,7 +157,7 @@ export default function VoterManagement() {
         v.invitation_code?.toLowerCase().includes(search.toLowerCase())
     );
 
-    if (!mounted) return null;
+    if (!mounted || userLoading) return null;
 
     return (
         <div className="p-8 max-w-[1400px] mx-auto animate-fade-in" suppressHydrationWarning>
@@ -170,14 +172,18 @@ export default function VoterManagement() {
                         <Download className="mr-2 h-5 w-5 text-emerald-500" />
                         Export CSV
                     </Button>
-                    <Button variant="outline" onClick={() => setIsImportModalOpen(true)} className="rounded-2xl h-12 px-6 font-bold shadow-sm hover:bg-slate-50 transition-all border-slate-200">
-                        <FileUp className="mr-2 h-5 w-5 text-indigo-500" />
-                        Import CSV
-                    </Button>
-                    <Button onClick={() => setIsAddModalOpen(true)} className="rounded-2xl h-12 px-6 font-black shadow-lg shadow-primary/20 hover:scale-[1.02] transition-all">
-                        <UserPlus className="mr-2 h-5 w-5" />
-                        Tambah Manual
-                    </Button>
+                    {(hasPermission('manage_voters') || hasPermission('edit_voters')) && (
+                        <>
+                            <Button variant="outline" onClick={() => setIsImportModalOpen(true)} className="rounded-2xl h-12 px-6 font-bold shadow-sm hover:bg-slate-50 transition-all border-slate-200">
+                                <FileUp className="mr-2 h-5 w-5 text-indigo-500" />
+                                Import CSV
+                            </Button>
+                            <Button onClick={() => setIsAddModalOpen(true)} className="rounded-2xl h-12 px-6 font-black shadow-lg shadow-primary/20 hover:scale-[1.02] transition-all">
+                                <UserPlus className="mr-2 h-5 w-5" />
+                                Tambah Manual
+                            </Button>
+                        </>
+                    )}
                 </div>
             </header>
 
@@ -278,27 +284,31 @@ export default function VoterManagement() {
                                     {isRegistrationOpen && (
                                         <Button
                                             variant={voter.is_present ? "outline" : "default"}
+                                            disabled={voter.is_present && !hasPermission('manage_voters')} // Officers can't uncheck
                                             onClick={() => togglePresence(voter.id, voter.is_present)}
                                             className={cn(
                                                 "rounded-2xl font-black text-xs uppercase tracking-widest h-12 transition-all",
                                                 voter.is_present
                                                     ? "border-rose-200 text-rose-500 hover:bg-rose-50 hover:text-rose-600"
-                                                    : "bg-emerald-600 hover:bg-emerald-700 shadow-lg shadow-emerald-200 hover:scale-105"
+                                                    : "bg-emerald-600 hover:bg-emerald-700 shadow-lg shadow-emerald-200 hover:scale-105",
+                                                voter.is_present && !hasPermission('manage_voters') && "opacity-50 cursor-not-allowed group-hover:opacity-50 grayscale"
                                             )}
                                         >
                                             {voter.is_present ? (
-                                                <><XCircle className="mr-2 h-4 w-4" /> Batal Hadir</>
+                                                <><XCircle className="mr-2 h-4 w-4" /> Hadir</>
                                             ) : (
                                                 <><CheckCircle2 className="mr-2 h-4 w-4" /> Tandai Hadir</>
                                             )}
                                         </Button>
                                     )}
-                                    <Button variant="secondary" className={cn(
-                                        "rounded-2xl border-none bg-slate-50 text-slate-500 font-black text-xs uppercase tracking-widest h-12 hover:bg-primary/10 hover:text-primary transition-all",
-                                        !isRegistrationOpen && "col-span-2"
-                                    )}>
-                                        <Printer className="mr-2 h-4 w-4" /> Undangan
-                                    </Button>
+                                    {hasPermission('manage_invitations') && (
+                                        <Button variant="secondary" className={cn(
+                                            "rounded-2xl border-none bg-slate-50 text-slate-500 font-black text-xs uppercase tracking-widest h-12 hover:bg-primary/10 hover:text-primary transition-all",
+                                            !isRegistrationOpen && "col-span-2"
+                                        )}>
+                                            <Printer className="mr-2 h-4 w-4" /> Undangan
+                                        </Button>
+                                    )}
                                 </div>
                             </div>
                         </CardContent>
