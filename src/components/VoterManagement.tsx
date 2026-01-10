@@ -227,7 +227,7 @@ export default function VoterManagement() {
     if (!mounted) return null;
 
     return (
-        <div className="p-2 md:p-8 max-w-[1400px] mx-auto animate-fade-in" suppressHydrationWarning>
+        <div className="px-2 py-8 md:p-8 max-w-[1400px] mx-auto animate-fade-in" suppressHydrationWarning>
             {/* Page Header */}
             <header className="flex flex-col md:flex-row justify-between items-center gap-4 md:gap-6 mb-6 md:mb-12 pb-4 md:pb-8 border-b border-slate-200">
                 <div>
