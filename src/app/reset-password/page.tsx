@@ -33,49 +33,47 @@ export default function ResetPasswordPage() {
         // 2. Initial check
         const checkRecoverySession = async () => {
             try {
-                const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+                const { data: { session: existingSession } } = await supabase.auth.getSession();
 
-                if (session) {
+                if (existingSession) {
+                    console.log('ResetPasswordPage: Session found immediately');
                     setSessionValid(true);
-                } else {
-                    // Check URL for access_token or recovery markers
-                    const hash = window.location.hash || '';
-                    const searchParams = new URLSearchParams(window.location.search);
-                    const hasToken = hash.includes('access_token=') || searchParams.has('code');
-                    const isRecovery = hash.includes('type=recovery') || hash.includes('type=invite') || searchParams.get('type') === 'recovery';
+                    setCheckingSession(false);
+                    return;
+                }
 
-                    if (hasToken || isRecovery) {
-                        console.log('Recovery token detected, waiting for session...');
-                        // Give Supabase a few seconds to process the token
-                        for (let i = 0; i < 5; i++) {
-                            await new Promise(resolve => setTimeout(resolve, 800));
-                            const { data: { session: retrySession } } = await supabase.auth.getSession();
-                            if (retrySession) {
-                                setSessionValid(true);
-                                setError(null);
-                                break;
-                            }
+                // Check URL for access_token or recovery markers
+                const hash = window.location.hash || '';
+                const searchParams = new URLSearchParams(window.location.search);
+                const hasToken = hash.includes('access_token=') || searchParams.has('code');
+                const isRecovery = hash.includes('type=recovery') || hash.includes('type=invite') || searchParams.get('type') === 'recovery';
+
+                if (hasToken || isRecovery) {
+                    console.log('ResetPasswordPage: Recovery token detected, waiting for session...');
+
+                    // Give Supabase some time to process the token (up to ~6 seconds)
+                    for (let i = 0; i < 8; i++) {
+                        await new Promise(resolve => setTimeout(resolve, 800));
+                        const { data: { session: retrySession } } = await supabase.auth.getSession();
+
+                        if (retrySession) {
+                            console.log('ResetPasswordPage: Session obtained after retry', i + 1);
+                            setSessionValid(true);
+                            setError(null);
+                            setCheckingSession(false);
+                            return;
                         }
-
-                        // If after retries still no session
-                        setTimeout(() => {
-                            setCheckingSession(curr => {
-                                if (curr && !sessionValid) {
-                                    setError('Sesi pemulihan tidak ditemukan. Pastikan anda menggunakan link terbaru dari email.');
-                                }
-                                return false;
-                            });
-                        }, 1000);
-                        return;
-                    } else {
-                        setError('Link pemulihan tidak valid atau sudah kadaluarsa. Silakan minta link baru.');
                     }
+
+                    // If still no session after retries
+                    setError('Sesi pemulihan tidak ditemukan. Pastikan anda menggunakan link terbaru dari email.');
+                } else {
+                    setError('Link pemulihan tidak valid atau sudah kadaluarsa. Silakan minta link baru.');
                 }
             } catch (err: any) {
-                console.error('Session check error:', err);
+                console.error('ResetPasswordPage: Session check error:', err);
                 setError('Terjadi kesalahan teknis. Silakan coba lagi.');
             } finally {
-                // Only stop loading if we're not already waiting for a token
                 setCheckingSession(false);
             }
         };
