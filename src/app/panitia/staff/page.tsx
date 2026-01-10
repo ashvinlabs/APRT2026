@@ -17,20 +17,22 @@ export default function StaffPage() {
                 </div>
 
                 <Tabs defaultValue="staff" className="space-y-6">
-                    <TabsList className="bg-slate-100 p-1 rounded-2xl h-14 w-full md:w-auto">
-                        <TabsTrigger value="staff" className="rounded-xl h-12 px-8 font-black uppercase text-[10px] tracking-widest data-[state=active]:bg-white data-[state=active]:shadow-lg gap-2">
-                            <Users size={16} />
-                            Daftar Petugas
-                        </TabsTrigger>
-                        <TabsTrigger value="roles" className="rounded-xl h-12 px-8 font-black uppercase text-[10px] tracking-widest data-[state=active]:bg-white data-[state=active]:shadow-lg gap-2">
-                            <Shield size={16} />
-                            Kelola Peran
-                        </TabsTrigger>
-                        <TabsTrigger value="activity" className="rounded-xl h-12 px-8 font-black uppercase text-[10px] tracking-widest data-[state=active]:bg-white data-[state=active]:shadow-lg gap-2">
-                            <History size={16} />
-                            Log Aktivitas
-                        </TabsTrigger>
-                    </TabsList>
+                    <div className="w-full overflow-x-auto pb-2 scrollbar-hide">
+                        <TabsList className="bg-slate-100 p-1 rounded-2xl h-14 inline-flex min-w-full md:min-w-0 md:w-auto">
+                            <TabsTrigger value="staff" className="rounded-xl h-12 px-8 font-black uppercase text-[10px] tracking-widest data-[state=active]:bg-white data-[state=active]:shadow-lg gap-2 whitespace-nowrap">
+                                <Users size={16} />
+                                Daftar Petugas
+                            </TabsTrigger>
+                            <TabsTrigger value="roles" className="rounded-xl h-12 px-8 font-black uppercase text-[10px] tracking-widest data-[state=active]:bg-white data-[state=active]:shadow-lg gap-2 whitespace-nowrap">
+                                <Shield size={16} />
+                                Kelola Peran
+                            </TabsTrigger>
+                            <TabsTrigger value="activity" className="rounded-xl h-12 px-8 font-black uppercase text-[10px] tracking-widest data-[state=active]:bg-white data-[state=active]:shadow-lg gap-2 whitespace-nowrap">
+                                <History size={16} />
+                                Log Aktivitas
+                            </TabsTrigger>
+                        </TabsList>
+                    </div>
 
                     <TabsContent value="staff">
                         <UserManager />

@@ -16,8 +16,12 @@ import {
     Check,
     Pencil,
     Key,
-    UserCog
+    UserCog,
+    Camera,
+    User
 } from 'lucide-react';
+import ImageCropModal from './ImageCropModal';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -61,6 +65,7 @@ interface StaffMember {
     user_id: string;
     name: string;
     email: string;
+    photo_url?: string;
     is_approved: boolean;
     created_at: string;
     roles: Role[];
@@ -77,6 +82,8 @@ export default function UserManager() {
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const [newStaff, setNewStaff] = useState({ name: '', email: '', password: '' });
     const [isCreating, setIsCreating] = useState(false);
+    const [isCropModalOpen, setIsCropModalOpen] = useState(false);
+    const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 
     useEffect(() => {
         fetchData();
@@ -101,6 +108,7 @@ export default function UserManager() {
                 user_id,
                 name,
                 email,
+                photo_url,
                 is_approved,
                 created_at,
                 staff_roles (
@@ -199,6 +207,46 @@ export default function UserManager() {
             setStaff(prev => prev.filter(s => s.id !== member.id));
         }
         setUpdating(member.id);
+    }
+
+    async function handlePhotoCrop(blob: Blob) {
+        if (!editingMember || !user) return;
+
+        setIsUploadingPhoto(true);
+        try {
+            const fileName = `staff-${editingMember.id}-${Date.now()}.jpg`;
+            const { data: uploadData, error: uploadError } = await supabase.storage
+                .from('staff-photos')
+                .upload(fileName, blob, {
+                    contentType: 'image/jpeg',
+                    upsert: true
+                });
+
+            if (uploadError) throw uploadError;
+
+            const { data: { publicUrl } } = supabase.storage
+                .from('staff-photos')
+                .getPublicUrl(fileName);
+
+            // Update database
+            const { error: dbError } = await supabase
+                .from('staff')
+                .update({ photo_url: publicUrl })
+                .eq('id', editingMember.id);
+
+            if (dbError) throw dbError;
+
+            // Update local state
+            setEditingMember(prev => prev ? { ...prev, photo_url: publicUrl } : null);
+            setStaff(prev => prev.map(s => s.id === editingMember.id ? { ...s, photo_url: publicUrl } : s));
+
+            alert('Foto profil berhasil diperbarui!');
+        } catch (error: any) {
+            console.error('Error uploading photo:', error);
+            alert('Gagal mengunggah foto: ' + error.message);
+        } finally {
+            setIsUploadingPhoto(false);
+        }
     }
 
     async function handleEditStaff(e: React.FormEvent) {
@@ -376,9 +424,17 @@ export default function UserManager() {
                             {staff.map((member) => (
                                 <TableRow key={member.id} className="group border-slate-50 hover:bg-slate-50/50 transition-colors">
                                     <TableCell className="pl-8">
-                                        <div className="flex flex-col">
-                                            <span className="font-black text-slate-800">{member.name}</span>
-                                            <span className="text-[10px] font-bold text-slate-400 font-mono tracking-tighter opacity-0 group-hover:opacity-100 transition-opacity">#{member.id.substring(0, 8)}</span>
+                                        <div className="flex items-center gap-3">
+                                            <Avatar className="h-10 w-10 border-2 border-slate-100 shadow-sm">
+                                                <AvatarImage src={member.photo_url || ''} className="object-cover" />
+                                                <AvatarFallback className="bg-slate-100 text-slate-500 font-black text-xs">
+                                                    {member.name.substring(0, 2).toUpperCase()}
+                                                </AvatarFallback>
+                                            </Avatar>
+                                            <div className="flex flex-col">
+                                                <span className="font-black text-slate-800">{member.name}</span>
+                                                <span className="text-[10px] font-bold text-slate-400 font-mono tracking-tighter opacity-0 group-hover:opacity-100 transition-opacity">#{member.id.substring(0, 8)}</span>
+                                            </div>
                                         </div>
                                     </TableCell>
                                     <TableCell>
@@ -520,6 +576,27 @@ export default function UserManager() {
                         <DialogTitle className="text-2xl font-black italic tracking-tighter uppercase">Edit <span className="text-blue-400">Profil</span></DialogTitle>
                         <DialogDescription className="text-slate-400 font-bold">Perbarui data diri petugas.</DialogDescription>
                     </DialogHeader>
+                    <div className="p-8 pb-4 flex flex-col items-center justify-center bg-slate-50 border-b border-slate-100">
+                        <div className="relative group">
+                            <Avatar className="h-24 w-24 border-4 border-white shadow-xl">
+                                <AvatarImage src={editingMember?.photo_url || ''} className="object-cover" />
+                                <AvatarFallback className="bg-slate-200 text-slate-400">
+                                    <User size={40} />
+                                </AvatarFallback>
+                            </Avatar>
+                            <Button
+                                type="button"
+                                size="icon"
+                                onClick={() => setIsCropModalOpen(true)}
+                                className="absolute bottom-0 right-0 rounded-full h-8 w-8 bg-primary hover:bg-primary/90 text-white shadow-lg border-2 border-white scale-110 active:scale-95 transition-transform"
+                                disabled={isUploadingPhoto}
+                            >
+                                {isUploadingPhoto ? <Loader2 size={14} className="animate-spin" /> : <Camera size={14} />}
+                            </Button>
+                        </div>
+                        <p className="mt-4 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Foto Profil Petugas</p>
+                    </div>
+
                     <form onSubmit={handleEditStaff} className="p-8 space-y-6 bg-white">
                         <div className="space-y-2">
                             <Label className="text-xs font-black text-slate-400 uppercase tracking-widest">Nama Lengkap</Label>
@@ -625,6 +702,13 @@ export default function UserManager() {
                     </form>
                 </DialogContent>
             </Dialog>
+
+            {/* Photo Crop Modal */}
+            <ImageCropModal
+                isOpen={isCropModalOpen}
+                onClose={() => setIsCropModalOpen(false)}
+                onCropComplete={handlePhotoCrop}
+            />
         </div>
     );
 }

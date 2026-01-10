@@ -22,6 +22,7 @@ import { useSidebar } from './SidebarContext';
 import { Button } from '@/components/ui/button';
 import { useUser } from './UserContext';
 import { Permissions } from '@/lib/permissions';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 interface MenuItem {
     name: string;
@@ -164,9 +165,12 @@ export default function Sidebar() {
                             "flex items-center gap-3 p-2 rounded-2xl bg-white border border-slate-100 shadow-sm transition-all duration-300",
                             !isOpen && "justify-center border-none bg-transparent shadow-none"
                         )}>
-                            <div className="w-8 h-8 rounded-lg bg-indigo-50 flex items-center justify-center text-primary font-bold text-xs shrink-0 border border-primary/10">
-                                {user.name?.[0]?.toUpperCase() || 'U'}
-                            </div>
+                            <Avatar className="h-8 w-8 border border-slate-100 shadow-sm shrink-0">
+                                <AvatarImage src={user.photo_url || ''} className="object-cover" />
+                                <AvatarFallback className="bg-indigo-50 text-primary font-bold text-xs shrink-0 border border-primary/10">
+                                    {(user.name || 'U')[0].toUpperCase()}
+                                </AvatarFallback>
+                            </Avatar>
                             {isOpen && (
                                 <div className="flex flex-col min-w-0">
                                     <span className="text-[11px] font-black text-slate-800 truncate leading-none mb-1 uppercase tracking-tight">
