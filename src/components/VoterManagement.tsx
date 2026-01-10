@@ -56,6 +56,9 @@ export default function VoterManagement() {
     const [editingVoter, setEditingVoter] = useState<Voter | null>(null);
     const [isRegistrationOpen, setIsRegistrationOpen] = useState(true);
 
+    // Determine if user can see full data (for privacy masking)
+    const canSeeFullData = user ? hasPermission('manage_voters') : false;
+
     useEffect(() => {
         setMounted(true);
         fetchVoters();
@@ -196,8 +199,6 @@ export default function VoterManagement() {
         link.click();
         document.body.removeChild(link);
     };
-
-    const canSeeFullData = hasPermission('manage_voters');
 
     const formatNIK = (nik: string | undefined) => {
         if (!nik) return 'NIK tidak terdaftar';
