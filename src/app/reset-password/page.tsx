@@ -20,42 +20,70 @@ export default function ResetPasswordPage() {
     const router = useRouter();
 
     useEffect(() => {
-        // Check if there's a recovery/invite token in the URL  hash
+        // 1. Listen for auth state changes (most robust way)
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+            console.log('ResetPasswordPage: Auth event:', event, session ? 'Session exists' : 'No session');
+            if (session) {
+                setSessionValid(true);
+                setCheckingSession(false);
+                setError(null);
+            }
+        });
+
+        // 2. Initial check
         const checkRecoverySession = async () => {
             try {
-                // Get session which should be set from the recovery link
                 const { data: { session }, error: sessionError } = await supabase.auth.getSession();
 
                 if (session) {
-                    console.log('Valid recovery session found');
                     setSessionValid(true);
                 } else {
-                    console.log('No session found, checking URL hash for recovery token');
-                    // If no session but hash exists, Supabase should handle it automatically
-                    const hash = window.location.hash;
-                    if (hash && (hash.includes('type=recovery') || hash.includes('type=invite'))) {
-                        // Wait a bit for Supabase to process the hash
-                        await new Promise(resolve => setTimeout(resolve, 1000));
-                        const { data: { session: retrySession } } = await supabase.auth.getSession();
-                        if (retrySession) {
-                            setSessionValid(true);
-                        } else {
-                            setError('Link pemulihan tidak valid atau sudah kadaluarsa. Silakan minta link baru.');
+                    // Check URL for access_token or recovery markers
+                    const hash = window.location.hash || '';
+                    const searchParams = new URLSearchParams(window.location.search);
+                    const hasToken = hash.includes('access_token=') || searchParams.has('code');
+                    const isRecovery = hash.includes('type=recovery') || hash.includes('type=invite') || searchParams.get('type') === 'recovery';
+
+                    if (hasToken || isRecovery) {
+                        console.log('Recovery token detected, waiting for session...');
+                        // Give Supabase a few seconds to process the token
+                        for (let i = 0; i < 5; i++) {
+                            await new Promise(resolve => setTimeout(resolve, 800));
+                            const { data: { session: retrySession } } = await supabase.auth.getSession();
+                            if (retrySession) {
+                                setSessionValid(true);
+                                setError(null);
+                                break;
+                            }
                         }
+
+                        // If after retries still no session
+                        setTimeout(() => {
+                            setCheckingSession(curr => {
+                                if (curr && !sessionValid) {
+                                    setError('Sesi pemulihan tidak ditemukan. Pastikan anda menggunakan link terbaru dari email.');
+                                }
+                                return false;
+                            });
+                        }, 1000);
+                        return;
                     } else {
                         setError('Link pemulihan tidak valid atau sudah kadaluarsa. Silakan minta link baru.');
                     }
                 }
             } catch (err: any) {
                 console.error('Session check error:', err);
-                setError('Terjadi kesalahan. Silakan coba lagi.');
+                setError('Terjadi kesalahan teknis. Silakan coba lagi.');
             } finally {
+                // Only stop loading if we're not already waiting for a token
                 setCheckingSession(false);
             }
         };
 
         checkRecoverySession();
-    }, []);
+
+        return () => subscription.unsubscribe();
+    }, [sessionValid]);
 
     async function handleResetPassword(e: React.FormEvent) {
         e.preventDefault();
