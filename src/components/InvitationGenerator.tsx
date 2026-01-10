@@ -391,7 +391,7 @@ function InvitationContent() {
           }
           
           @page {
-            size: A4;
+            size: A4 portrait;
             margin: 0;
           }
 
@@ -401,20 +401,32 @@ function InvitationContent() {
           }
 
           .invitation-page-segment {
-            height: 9.9cm; /* 29.7cm / 3 */
+            height: 9.9cm; /* 29.7cm / 3 = 9.9cm per invitation */
             width: 21cm;
-            padding: 0.8cm 1.5cm;
+            padding: 0.6cm 1.2cm;
             box-sizing: border-box;
-            border-bottom: 1px dashed #bbb;
+            border: 2px solid #333; /* Solid border around each invitation */
             page-break-inside: avoid;
             background: white !important;
             margin: 0 !important;
             border-radius: 0 !important;
             box-shadow: none !important;
+            display: block;
+            position: relative;
+          }
+
+          .invitation-page-segment:nth-child(3n) {
+            page-break-after: always; /* New page after every 3 invitations */
           }
 
           .voter-box {
             background: transparent !important;
+          }
+
+          .formal-invitation {
+            height: 100%;
+            display: flex;
+            flex-direction: column;
           }
         }
       `}</style>
