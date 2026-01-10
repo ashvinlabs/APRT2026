@@ -11,7 +11,7 @@ export default function MobileMenuButton() {
         <Button
             onClick={toggle}
             size="icon"
-            className="fixed top-4 left-4 z-50 md:hidden rounded-full shadow-lg bg-primary hover:bg-primary/90 text-white"
+            className="fixed bottom-6 right-6 z-50 md:hidden rounded-full shadow-lg bg-primary hover:bg-primary/90 text-white"
             aria-label="Toggle Menu"
         >
             <Menu size={20} />
