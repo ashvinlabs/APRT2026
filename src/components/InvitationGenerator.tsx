@@ -146,13 +146,24 @@ function InvitationContent() {
 
                   <div className="voter-box">
                     <div className="voter-text">
-                      <p className="target-label">Kepada Yth:</p>
-                      <p className="voter-name">{voter.name}</p>
-                      <p className="voter-nik">{voter.nik || 'NIK tidak terdaftar'}</p>
-                      <p className="voter-address">{voter.address || 'Alamat tidak tersedia'}</p>
+                      <p className="target-label">Kepada Yth,</p>
+                      <div className="voter-data-grid">
+                        <div className="voter-data-row">
+                          <span className="v-label">Nama</span>
+                          <span className="v-val">: <strong>{voter.name}</strong></span>
+                        </div>
+                        <div className="voter-data-row">
+                          <span className="v-label">NIK</span>
+                          <span className="v-val">: {voter.nik || '-'}</span>
+                        </div>
+                        <div className="voter-data-row">
+                          <span className="v-label">Alamat</span>
+                          <span className="v-val">: <em>{voter.address || '-'}</em></span>
+                        </div>
+                      </div>
                     </div>
                     <div className="qr-container">
-                      <QRCodeSVG value={voter.invitation_code} size={90} level="M" includeMargin={false} />
+                      <QRCodeSVG value={voter.invitation_code} size={110} level="M" includeMargin={false} />
                       <p className="qr-code-text">{voter.invitation_code}</p>
                     </div>
                   </div>
@@ -165,13 +176,14 @@ function InvitationContent() {
                 {/* Footer Section */}
                 <div className="footer-section">
                   <div className="closing">
-                    <p>Demikian disampaikan dengan penuh hormat. <br /> Terima kasih.</p>
+                    <p>Demikian disampaikan dengan penuh hormat.</p>
+                    <p>Terima kasih.</p>
                   </div>
                   <div className="signature">
                     <p className="date-city">Yogyakarta, {getInvitationDate()}</p>
                     <p className="regards">Hormat kami,</p>
                     <div className="committee-box">
-                      <p className="committee-name">Panitia Pemilihan Umum RT 12</p>
+                      <p className="committee-name underline font-bold">Panitia Pemilihan Umum RT 12</p>
                       <p className="locality">Pelem Kidul</p>
                     </div>
                   </div>
@@ -263,50 +275,45 @@ function InvitationContent() {
         }
 
         .voter-box {
-          border: 1.5px solid black;
-          padding: 0.75rem 1rem;
+          border: 1px solid black;
+          padding: 0.5cm;
           display: flex;
           justify-content: space-between;
           align-items: center;
-          background: #fdfdfd;
-          margin: 0.5rem 0;
+          background: #fff;
+          margin: 0.75rem 0;
         }
 
         .target-label {
-          font-size: 9pt;
-          margin: 0;
+          font-size: 10pt;
+          margin: 0 0 0.5rem 0;
           font-weight: bold;
           text-decoration: underline;
         }
 
-        .voter-name {
-          font-size: 13pt;
-          font-weight: 900;
-          margin: 2px 0;
-          text-transform: uppercase;
+        .voter-data-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
         }
 
-        .voter-nik {
-          font-family: monospace;
-          font-size: 10pt;
-          margin: 0;
+        .voter-data-row {
+            display: flex;
+            font-size: 11pt;
         }
 
-        .voter-address {
-          font-size: 9pt;
-          margin: 0;
-          font-style: italic;
+        .v-label {
+            width: 60px;
         }
 
         .qr-container {
           text-align: center;
           padding-left: 1rem;
-          border-left: 1px dashed #ccc;
         }
 
         .qr-code-text {
           font-family: monospace;
-          font-size: 8pt;
+          font-size: 9pt;
           font-weight: bold;
           margin: 4px 0 0 0;
         }
@@ -322,8 +329,7 @@ function InvitationContent() {
           display: flex;
           justify-content: space-between;
           align-items: flex-end;
-          margin-top: auto;
-          padding-top: 0.5rem;
+          margin-top: 1rem;
         }
 
         .closing p {
@@ -333,7 +339,7 @@ function InvitationContent() {
 
         .signature {
           text-align: center;
-          width: 200px;
+          width: 250px;
         }
 
         .signature p {
@@ -342,7 +348,7 @@ function InvitationContent() {
         }
 
         .regards {
-          margin-bottom: 1.5rem !important;
+          margin-bottom: 2.2rem !important;
         }
 
         .committee-box {
