@@ -7,6 +7,7 @@ export interface UserProfile {
     user_id: string;
     name: string;
     is_approved: boolean;
+    photo_url?: string;
     roles: Role[];
     permissions: Permissions;
 }
