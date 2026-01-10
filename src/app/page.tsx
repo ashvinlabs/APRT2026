@@ -123,11 +123,15 @@ export default function HomePage() {
             </Card>
           </div>
 
+
           <div className="text-center space-y-1">
             <p className="text-sm text-slate-400 font-bold">
               &copy; 2026 Panitia Pemilu RT 12 Baturetno.
             </p>
             <p className="text-[10px] text-slate-300 font-medium uppercase tracking-[0.2em]">Sistem E-Voting Terintegrasi</p>
+            <p className="text-[10px] text-slate-300 font-medium">
+              Designed and developed by <span className="font-bold text-primary">Ashvin Labs</span>
+            </p>
           </div>
         </footer>
       </div>
