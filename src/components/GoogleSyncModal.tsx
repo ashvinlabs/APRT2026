@@ -150,8 +150,7 @@ export default function GoogleSyncModal({ voters: initialVoters, onClose }: Goog
 
                 const appWins = dbMatch && dbUpdatedAt > sheetLastSync;
 
-                const voterObj = {
-                    id: dbMatch?.id || undefined,
+                const voterObj: any = {
                     name: appWins ? dbMatch.name : (row.name || row.nama),
                     nik: nik,
                     address: appWins ? dbMatch.address : (row.address || row.alamat || ''),
@@ -159,6 +158,8 @@ export default function GoogleSyncModal({ voters: initialVoters, onClose }: Goog
                     is_present: appWins ? dbMatch.is_present : (row.is_present ?? dbMatch?.is_present ?? false),
                     display_order: index + 1 // Always follow Sheet order
                 };
+
+                if (dbMatch?.id) voterObj.id = dbMatch.id;
 
                 finalVotersToUpsert.push(voterObj);
             });
