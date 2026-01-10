@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import {
     Users,
@@ -41,6 +42,7 @@ interface Voter {
 }
 
 export default function VoterManagement() {
+    const router = useRouter();
     const { user, hasPermission, isLoading: userLoading } = useUser();
     const [voters, setVoters] = useState<Voter[]>([]);
     const [loading, setLoading] = useState(true);
@@ -385,10 +387,14 @@ export default function VoterManagement() {
                                             </Button>
                                         )}
                                         {hasPermission('manage_invitations') && (
-                                            <Button variant="secondary" className={cn(
-                                                "rounded-2xl border-none bg-slate-50 text-slate-500 font-black text-xs uppercase tracking-widest h-12 hover:bg-primary/10 hover:text-primary transition-all",
-                                                !isRegistrationOpen && "col-span-2"
-                                            )}>
+                                            <Button
+                                                variant="secondary"
+                                                onClick={() => router.push('/panitia/invitations')}
+                                                className={cn(
+                                                    "rounded-2xl border-none bg-slate-50 text-slate-500 font-black text-xs uppercase tracking-widest h-12 hover:bg-primary/10 hover:text-primary transition-all",
+                                                    !isRegistrationOpen && "col-span-2"
+                                                )}
+                                            >
                                                 <Printer className="mr-2 h-4 w-4" /> Undangan
                                             </Button>
                                         )}
