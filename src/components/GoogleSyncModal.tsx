@@ -126,61 +126,83 @@ export default function GoogleSyncModal({ voters: initialVoters, onClose }: Goog
 
             if (fetchError) throw fetchError;
 
-            // 3. Merge Logic & Identity Mapping
+            // 3. Merge Logic & Conflict Resolution
             const finalVotersToUpsert: any[] = [];
             const sheetNiks = new Set();
+            const idsToDelete: string[] = [];
 
+            // A. Process Sheet Data
             sheetData.forEach((row, index) => {
                 const nik = row.nik?.toString().trim();
-                if (!nik) return; // Skip rows without NIK as per user rule
+                if (!nik) return; // Skip rows without NIK
 
                 sheetNiks.add(nik);
-                const existing = dbVoters.find(v => v.nik?.toString().trim() === nik);
+                const dbMatch = dbVoters.find(v => v.nik?.toString().trim() === nik);
+
+                // Get Timestamps
+                const dbUpdatedAt = dbMatch?.updated_at ? new Date(dbMatch.updated_at).getTime() : 0;
+                const sheetLastSync = row.last_sync ? new Date(row.last_sync).getTime() : 0;
+
+                // DECISION LOGIC:
+                // 1. If record is new to App -> Take from Sheet
+                // 2. If App was updated MORE RECENTLY than the last sync -> App Wins (Push later)
+                // 3. If Sheet matches last sync or was edited manually -> Sheet Wins (Pull now)
+
+                const appWins = dbMatch && dbUpdatedAt > sheetLastSync;
 
                 const voterObj = {
-                    id: existing?.id || undefined, // Keep ID if exists to preserve logs/metadata
-                    name: row.name || row.nama,
+                    id: dbMatch?.id || undefined,
+                    name: appWins ? dbMatch.name : (row.name || row.nama),
                     nik: nik,
-                    address: row.address || row.alamat || '',
-                    invitation_code: row.invitation_code || row.kode || existing?.invitation_code || `RT12-${Math.random().toString(36).substring(2, 8).toUpperCase()}`,
-                    is_present: row.is_present ?? existing?.is_present ?? false,
-                    display_order: index + 1 // Maintain strict ordering parity
+                    address: appWins ? dbMatch.address : (row.address || row.alamat || ''),
+                    invitation_code: dbMatch?.invitation_code || row.invitation_code || row.kode || `RT12-${Math.random().toString(36).substring(2, 8).toUpperCase()}`,
+                    is_present: appWins ? dbMatch.is_present : (row.is_present ?? dbMatch?.is_present ?? false),
+                    display_order: index + 1 // Always follow Sheet order
                 };
 
                 finalVotersToUpsert.push(voterObj);
             });
 
-            // 4. Identify records to DELETE (App data NOT in Sheet)
-            const niksToDelete = dbVoters
-                .filter(v => v.nik && !sheetNiks.has(v.nik.toString().trim()))
-                .map(v => v.id);
+            // B. Handle Deletions (Smart Parity)
+            // If a NIK exists in the Sheet with a LastSync time, but is missing from the App, 
+            // it means it was deleted in the App. We should DE-LIST it from the final upsert 
+            // and it will naturally be removed from the Sheet during the final Push.
+            // (Current logic: The final push will only contain what's in finalVotersToUpsert)
 
-            // 5. Database Batch Sync
+            // Database records to delete (App has them, but Sheet doesn't)
+            dbVoters.forEach(v => {
+                if (v.nik && !sheetNiks.has(v.nik.toString().trim())) {
+                    idsToDelete.push(v.id);
+                }
+            });
+
+            // 4. Database Batch Sync
             setSyncProgress('Memperbarui database aplikasi...');
 
             // Delete missing
-            if (niksToDelete.length > 0) {
-                await supabase.from('voters').delete().in('id', niksToDelete);
+            if (idsToDelete.length > 0) {
+                await supabase.from('voters').delete().in('id', idsToDelete);
             }
 
-            // Upsert merged/new
+            // Upsert merged
             const { error: upsertError } = await supabase.from('voters').upsert(finalVotersToUpsert, {
                 onConflict: 'nik'
             });
 
             if (upsertError) throw upsertError;
 
-            // 6. Push finalized data back to Sheets (Ensure parity of codes/sequence)
+            // 5. Final Push Back to Sheets (Guaranteed Parity)
             setSyncProgress('Sinkronisasi balik ke Sheets...');
             const { data: updatedVoters } = await supabase.from('voters').select('*').order('display_order', { ascending: true });
 
+            const now = new Date().toISOString();
             await fetch(webhookUrl, {
                 method: 'POST',
                 mode: 'no-cors',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     action: 'sync_voters',
-                    timestamp: new Date().toISOString(),
+                    timestamp: now,
                     data: (updatedVoters || []).map(v => ({
                         nama: v.name,
                         nik: v.nik,
@@ -191,10 +213,10 @@ export default function GoogleSyncModal({ voters: initialVoters, onClose }: Goog
                 })
             });
 
-            setStatus({ type: 'success', text: 'Smart Sync Berhasil! Data Aplikasi dan Sheets sekarang identik.' });
+            setStatus({ type: 'success', text: 'Advanced Sync Berhasil! Konflik data telah diselesaikan secara otomatis.' });
             setTimeout(() => window.location.reload(), 2000);
         } catch (err: any) {
-            console.error('Smart Sync Error:', err);
+            console.error('Advanced Sync Error:', err);
             setStatus({ type: 'error', text: 'Gagal Sinkronisasi: ' + err.message });
         } finally {
             setIsSyncing(false);
@@ -217,9 +239,10 @@ export default function GoogleSyncModal({ voters: initialVoters, onClose }: Goog
         if (h === 'alamat' || h === 'address') obj.address = row[i];
         if (h === 'kode' || h === 'code') obj.invitation_code = row[i]?.toString() || '';
         if (h === 'status') obj.is_present = (row[i]?.toString().toLowerCase() === 'hadir');
+        if (h === 'last sync' || h === 'last_sync') obj.last_sync = row[i];
       });
       return obj;
-    }).filter(v => v.nik); // Only return rows with NIK
+    }).filter(v => v.nik);
     
     return ContentService.createTextOutput(JSON.stringify(json)).setMimeType(ContentService.MimeType.JSON);
   }

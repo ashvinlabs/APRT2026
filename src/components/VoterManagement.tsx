@@ -19,7 +19,8 @@ import {
     Download,
     Trash2,
     Cloud,
-    ExternalLink
+    ExternalLink,
+    Pencil
 } from 'lucide-react';
 import VoterImport from './VoterImport';
 import GoogleSyncModal from './GoogleSyncModal';
@@ -46,9 +47,11 @@ export default function VoterManagement() {
     const [search, setSearch] = useState('');
     const [isImportModalOpen, setIsImportModalOpen] = useState(false);
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [isSyncModalOpen, setIsSyncModalOpen] = useState(false);
     const [mounted, setMounted] = useState(false);
     const [newVoter, setNewVoter] = useState({ name: '', nik: '', address: '' });
+    const [editingVoter, setEditingVoter] = useState<Voter | null>(null);
     const [isRegistrationOpen, setIsRegistrationOpen] = useState(true);
 
     useEffect(() => {
@@ -142,6 +145,27 @@ export default function VoterManagement() {
         if (!error) {
             setIsAddModalOpen(false);
             setNewVoter({ name: '', nik: '', address: '' });
+            fetchVoters();
+        }
+    }
+
+    async function handleEditVoter(e: React.FormEvent) {
+        e.preventDefault();
+        if (!editingVoter) return;
+
+        const { error } = await supabase
+            .from('voters')
+            .update({
+                name: editingVoter.name,
+                address: editingVoter.address
+            })
+            .eq('id', editingVoter.id);
+
+        if (error) {
+            alert('Gagal mengupdate data: ' + error.message);
+        } else {
+            setIsEditModalOpen(false);
+            setEditingVoter(null);
             fetchVoters();
         }
     }
@@ -290,18 +314,30 @@ export default function VoterManagement() {
                                             </div>
                                         </div>
                                     </div>
-                                    <div className="flex items-center gap-2">
+                                    <div className="flex items-center gap-1">
                                         {user && hasPermission('manage_voters') && (
-                                            <button
-                                                onClick={() => deleteVoter(voter.id, voter.name)}
-                                                className="p-2 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-all"
-                                                title="Hapus Warga"
-                                            >
-                                                <Trash2 size={16} />
-                                            </button>
+                                            <>
+                                                <button
+                                                    onClick={() => {
+                                                        setEditingVoter(voter);
+                                                        setIsEditModalOpen(true);
+                                                    }}
+                                                    className="p-2 text-slate-300 hover:text-blue-500 hover:bg-blue-50 rounded-lg transition-all"
+                                                    title="Edit Warga"
+                                                >
+                                                    <Pencil size={16} />
+                                                </button>
+                                                <button
+                                                    onClick={() => deleteVoter(voter.id, voter.name)}
+                                                    className="p-2 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-all"
+                                                    title="Hapus Warga"
+                                                >
+                                                    <Trash2 size={16} />
+                                                </button>
+                                            </>
                                         )}
                                         <Badge className={cn(
-                                            "px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest",
+                                            "px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ml-1",
                                             voter.is_present
                                                 ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-200 border-none animate-pulse"
                                                 : "bg-slate-100 text-slate-400 hover:bg-slate-200 border-none"
@@ -385,6 +421,58 @@ export default function VoterManagement() {
                 </div>
             )}
 
+            {isEditModalOpen && editingVoter && (
+                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
+                    <Card className="w-full max-w-lg border-none shadow-2xl rounded-[2.5rem] overflow-hidden">
+                        <header className="p-8 bg-gradient-to-br from-blue-600 to-indigo-700 text-white relative">
+                            <div className="absolute top-0 right-0 p-8 opacity-10 pointer-events-none">
+                                <Pencil size={100} />
+                            </div>
+                            <h2 className="text-3xl font-black tracking-tight mb-1">Edit <span className="text-blue-200">Warga</span></h2>
+                            <p className="text-blue-100/60 font-bold uppercase tracking-widest text-xs">Pembaruan Data DPT</p>
+                        </header>
+                        <form onSubmit={handleEditVoter} className="p-8 space-y-6 bg-white">
+                            <div className="space-y-2">
+                                <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Nama Lengkap</p>
+                                <Input
+                                    required
+                                    className="h-14 rounded-2xl bg-slate-50 border-slate-200 font-bold text-lg focus-visible:ring-primary/20"
+                                    value={editingVoter.name}
+                                    onChange={e => setEditingVoter({ ...editingVoter, name: e.target.value })}
+                                />
+                            </div>
+                            <div className="space-y-2 opacity-60">
+                                <p className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                                    NIK (Terkunci) <Info size={12} />
+                                </p>
+                                <Input
+                                    disabled
+                                    className="h-14 rounded-2xl bg-slate-100 border-slate-200 font-bold text-lg cursor-not-allowed"
+                                    value={editingVoter.nik}
+                                />
+                                <p className="text-[10px] text-slate-400 italic">Untuk mengubah NIK, silakan hapus dan tambah ulang warga.</p>
+                            </div>
+                            <div className="space-y-2">
+                                <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Alamat Lengkap</p>
+                                <Input
+                                    required
+                                    className="h-14 rounded-2xl bg-slate-50 border-slate-200 font-bold text-lg focus-visible:ring-primary/20"
+                                    value={editingVoter.address}
+                                    onChange={e => setEditingVoter({ ...editingVoter, address: e.target.value })}
+                                />
+                            </div>
+                            <div className="flex gap-4 pt-4">
+                                <Button type="button" variant="ghost" onClick={() => { setIsEditModalOpen(false); setEditingVoter(null); }} className="flex-1 h-16 rounded-2xl font-black text-slate-400 hover:text-slate-600 transition-all">
+                                    Batal
+                                </Button>
+                                <Button type="submit" className="flex-1 h-16 rounded-2xl font-black text-lg bg-blue-600 hover:bg-blue-700 shadow-xl shadow-blue-100 hover:scale-[1.02] transition-all">
+                                    Update Data
+                                </Button>
+                            </div>
+                        </form>
+                    </Card>
+                </div>
+            )}
             {isAddModalOpen && (
                 <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
                     <Card className="w-full max-w-lg border-none shadow-2xl rounded-[2.5rem] overflow-hidden">
