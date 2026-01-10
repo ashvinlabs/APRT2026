@@ -21,6 +21,10 @@ interface Stats {
     config: {
         title: string;
         location: string;
+        location_detail?: string;
+        date?: string;
+        start_time?: string;
+        end_time?: string;
     };
 }
 
@@ -109,7 +113,14 @@ export default function LiveDashboard() {
             votes: Object.entries(voteCounts).map(([id, count]) => ({ candidate_id: id, count })),
             total_valid_votes: valid,
             total_invalid_votes: invalid,
-            config: configData?.value || { title: 'REKAPITULASI LIVE', location: 'Pemilihan Ketua RT' }
+            config: configData?.value || {
+                title: 'REKAPITULASI LIVE',
+                location: 'Pemilihan Ketua RT',
+                location_detail: 'Pelem Kidul',
+                date: new Date().toISOString().split('T')[0],
+                start_time: '08:00',
+                end_time: '12:00'
+            }
         });
     }
 
@@ -133,7 +144,9 @@ export default function LiveDashboard() {
                             i === arr.length - 1 ? <span key={i} className="text-primary ml-2">{word}</span> : word + ' '
                         )}
                     </h1>
-                    <p className="text-base text-slate-500 font-medium mt-1">{stats?.config.location}</p>
+                    <p className="text-base text-slate-500 font-medium mt-1">
+                        {stats?.config.location_detail || stats?.config.location}
+                    </p>
                 </div>
 
                 <div className="flex gap-4 no-print scale-90 origin-right">
@@ -152,8 +165,13 @@ export default function LiveDashboard() {
                             <Calendar size={24} />
                         </div>
                         <div className="pr-4">
-                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Hari Pemilihan</p>
-                            <p className="text-lg font-black text-slate-900 leading-tight">10 Januari 2026</p>
+                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Hari & Waktu</p>
+                            <p className="text-sm font-black text-slate-900 leading-tight">
+                                {stats?.config.date ? new Date(stats.config.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }) : 'Setting Tanggal...'}
+                            </p>
+                            <p className="text-[10px] font-bold text-primary">
+                                {stats?.config.start_time && stats?.config.end_time ? `${stats.config.start_time} - ${stats.config.end_time} WIB` : 'Setting Jam...'}
+                            </p>
                         </div>
                     </div>
                 </div>
