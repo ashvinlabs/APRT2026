@@ -213,7 +213,9 @@ export default function VoterManagement() {
         v.invitation_code?.toLowerCase().includes(search.toLowerCase())
     );
 
-    if (!mounted || userLoading) return null;
+    // Only wait for user loading if we're actually checking authentication
+    // For public access, we can render immediately
+    if (!mounted) return null;
 
     return (
         <div className="p-8 max-w-[1400px] mx-auto animate-fade-in" suppressHydrationWarning>
