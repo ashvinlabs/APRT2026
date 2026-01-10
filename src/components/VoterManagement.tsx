@@ -227,9 +227,9 @@ export default function VoterManagement() {
     if (!mounted) return null;
 
     return (
-        <div className="p-4 md:p-8 max-w-[1400px] mx-auto animate-fade-in" suppressHydrationWarning>
+        <div className="p-2 md:p-8 max-w-[1400px] mx-auto animate-fade-in" suppressHydrationWarning>
             {/* Page Header */}
-            <header className="flex flex-col md:flex-row justify-between items-center gap-6 mb-8 md:mb-12 pb-6 md:pb-8 border-b border-slate-200">
+            <header className="flex flex-col md:flex-row justify-between items-center gap-4 md:gap-6 mb-6 md:mb-12 pb-4 md:pb-8 border-b border-slate-200">
                 <div>
                     <h1 className="text-3xl md:text-4xl font-black text-slate-900 tracking-tight">
                         {user ? 'Manajemen ' : 'Daftar '}
