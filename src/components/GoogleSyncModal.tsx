@@ -13,7 +13,8 @@ import {
     Check,
     ChevronRight,
     ExternalLink,
-    Loader2
+    Loader2,
+    Link2Off
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -47,8 +48,12 @@ export default function GoogleSyncModal({ voters, onClose }: GoogleSyncModalProp
             .single();
 
         if (data?.value) {
-            setWebhookUrl(data.value.webhook_url || '');
+            const url = data.value.webhook_url || '';
+            setWebhookUrl(url);
             setIsActive(data.value.is_active || false);
+            if (url) {
+                setStep(2);
+            }
         }
     }
 
@@ -73,6 +78,29 @@ export default function GoogleSyncModal({ voters, onClose }: GoogleSyncModalProp
             setStatus({ type: 'success', text: 'Konfigurasi berhasil disimpan!' });
             setTimeout(() => setStatus(null), 3000);
             setStep(2);
+        }
+    }
+
+    async function disconnect() {
+        if (!confirm('Apakah Anda yakin ingin memutuskan koneksi ke Google Sheets? Data konfigurasi akan dihapus.')) return;
+
+        setIsSaving(true);
+        const { error } = await supabase
+            .from('settings')
+            .upsert({
+                id: 'google_sync_config',
+                value: null
+            });
+
+        setIsSaving(false);
+        if (error) {
+            setStatus({ type: 'error', text: 'Gagal memutuskan koneksi: ' + error.message });
+        } else {
+            setWebhookUrl('');
+            setIsActive(false);
+            setStep(1);
+            setStatus({ type: 'success', text: 'Koneksi berhasil diputuskan.' });
+            setTimeout(() => setStatus(null), 3000);
         }
     }
 
@@ -141,7 +169,7 @@ export default function GoogleSyncModal({ voters, onClose }: GoogleSyncModalProp
     };
 
     return (
-        <Card className="w-full max-w-2xl border-none shadow-2xl rounded-[2.5rem] overflow-hidden bg-white">
+        <Card className="w-full max-w-2xl border-none shadow-2xl rounded-[2.5rem] overflow-hidden bg-white my-auto">
             <header className="p-8 bg-gradient-to-br from-blue-600 to-indigo-700 text-white relative">
                 <button
                     onClick={onClose}
@@ -162,7 +190,7 @@ export default function GoogleSyncModal({ voters, onClose }: GoogleSyncModalProp
                 <div className="flex gap-2">
                     <Badge className={cn(
                         "rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-widest",
-                        isActive ? "bg-emerald-400/20 text-emerald-100" : "bg-white/10 text-white/50"
+                        isActive ? "bg-emerald-400 text-emerald-950" : "bg-white/10 text-white/50"
                     )}>
                         {isActive ? 'Terhubung' : 'Belum Konfigurasi'}
                     </Badge>
@@ -238,13 +266,25 @@ export default function GoogleSyncModal({ voters, onClose }: GoogleSyncModalProp
                             </div>
                         </div>
 
-                        <Button
-                            onClick={saveSettings}
-                            disabled={!webhookUrl || isSaving}
-                            className="w-full h-14 rounded-2xl font-black text-lg shadow-xl shadow-primary/20 transition-all active:scale-95"
-                        >
-                            {isSaving ? <Loader2 className="animate-spin mr-2" /> : 'Hubungkan Google Sheets'}
-                        </Button>
+                        <div className="flex gap-3">
+                            <Button
+                                onClick={saveSettings}
+                                disabled={!webhookUrl || isSaving}
+                                className="flex-1 h-14 rounded-2xl font-black text-lg shadow-xl shadow-primary/20 transition-all active:scale-95"
+                            >
+                                {isSaving ? <Loader2 className="animate-spin mr-2" /> : 'Hubungkan Google Sheets'}
+                            </Button>
+                            {isActive && (
+                                <Button
+                                    variant="ghost"
+                                    onClick={disconnect}
+                                    className="h-14 w-14 rounded-2xl text-rose-500 hover:bg-rose-50 hover:text-rose-600 border border-slate-100"
+                                    title="Putuskan Link"
+                                >
+                                    <Link2Off size={24} />
+                                </Button>
+                            )}
+                        </div>
                     </div>
                 ) : (
                     <div className="space-y-6 animate-in fade-in slide-in-from-right-4 py-4">
@@ -261,18 +301,27 @@ export default function GoogleSyncModal({ voters, onClose }: GoogleSyncModalProp
                             </p>
                         </div>
 
-                        <div className="flex gap-4">
+                        <div className="flex gap-3">
                             <Button
                                 variant="outline"
                                 onClick={() => setStep(1)}
-                                className="flex-1 h-14 rounded-2xl font-black text-slate-500 border-slate-200"
+                                className="h-14 w-14 rounded-2xl text-slate-400 border-slate-200"
+                                title="Pengaturan"
                             >
-                                Ubah Config
+                                <Settings size={24} />
+                            </Button>
+                            <Button
+                                variant="outline"
+                                onClick={disconnect}
+                                className="h-14 w-14 rounded-2xl text-rose-400 border-slate-200 hover:text-rose-600 hover:bg-rose-50"
+                                title="Putuskan Link"
+                            >
+                                <Link2Off size={24} />
                             </Button>
                             <Button
                                 onClick={handleSync}
                                 disabled={isSyncing}
-                                className="flex-2 h-14 rounded-2xl font-black text-lg bg-indigo-600 hover:bg-indigo-700 shadow-xl shadow-indigo-100 w-full"
+                                className="flex-1 h-14 rounded-2xl font-black text-lg bg-indigo-600 hover:bg-indigo-700 shadow-xl shadow-indigo-100"
                             >
                                 {isSyncing ? 'Sedang Sinkron...' : 'Sync ke Sheets Sekarang'}
                             </Button>

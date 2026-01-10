@@ -437,7 +437,7 @@ export default function VoterManagement() {
                 </div>
             )}
             {isSyncModalOpen && (
-                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
+                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-start justify-center p-4 py-8 md:py-20 overflow-y-auto animate-fade-in">
                     <GoogleSyncModal
                         voters={voters}
                         onClose={() => setIsSyncModalOpen(false)}
