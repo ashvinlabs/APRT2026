@@ -46,6 +46,7 @@ interface Role {
 interface StaffMember {
     id: string;
     name: string;
+    email: string;
     is_approved: boolean;
     created_at: string;
     roles: Role[];
@@ -79,6 +80,7 @@ export default function UserManager() {
             .select(`
                 id,
                 name,
+                email,
                 is_approved,
                 created_at,
                 staff_roles (
@@ -231,8 +233,9 @@ export default function UserManager() {
                     <Table>
                         <TableHeader>
                             <TableRow className="hover:bg-transparent border-slate-100">
-                                <TableHead className="w-[250px] font-black uppercase text-[10px] tracking-widest pl-8">Nama Petugas</TableHead>
-                                <TableHead className="w-[150px] font-black uppercase text-[10px] tracking-widest">Status</TableHead>
+                                <TableHead className="w-[180px] font-black uppercase text-[10px] tracking-widest pl-8">Nama Petugas</TableHead>
+                                <TableHead className="font-black uppercase text-[10px] tracking-widest">Email</TableHead>
+                                <TableHead className="w-[130px] font-black uppercase text-[10px] tracking-widest">Status</TableHead>
                                 <TableHead className="font-black uppercase text-[10px] tracking-widest">Peran / Roles</TableHead>
                                 <TableHead className="w-[100px] text-right pr-8 font-black uppercase text-[10px] tracking-widest">Aksi</TableHead>
                             </TableRow>
@@ -243,8 +246,11 @@ export default function UserManager() {
                                     <TableCell className="pl-8">
                                         <div className="flex flex-col">
                                             <span className="font-black text-slate-800">{member.name}</span>
-                                            <span className="text-[10px] font-bold text-slate-400">Ditinjau pada {new Date(member.created_at).toLocaleDateString('id-ID')}</span>
+                                            <span className="text-[10px] font-bold text-slate-400 font-mono tracking-tighter opacity-0 group-hover:opacity-100 transition-opacity">#{member.id.substring(0, 8)}</span>
                                         </div>
+                                    </TableCell>
+                                    <TableCell>
+                                        <span className="text-sm font-medium text-slate-600">{member.email || '-'}</span>
                                     </TableCell>
                                     <TableCell>
                                         <Badge
