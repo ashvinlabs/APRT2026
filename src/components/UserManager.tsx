@@ -198,7 +198,7 @@ export default function UserManager() {
             return;
         }
 
-        if (!confirm(`Hapus petugas "${member.name}"? Tindakan ini tidak dapat dibatalkan.`)) return;
+        if (!confirm(`Hapus petugas "${member.name}"? Akun login (Auth) juga akan dihapus. Tindakan ini tidak dapat dibatalkan.`)) return;
 
         setUpdating(member.id);
         const { error } = await supabase.from('staff').delete().eq('id', member.id);
