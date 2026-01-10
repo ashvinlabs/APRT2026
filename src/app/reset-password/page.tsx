@@ -4,6 +4,10 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
 import { KeyRound, Loader2, ShieldAlert, CheckCircle2 } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
 
 export default function ResetPasswordPage() {
     const [password, setPassword] = useState('');
@@ -11,20 +15,49 @@ export default function ResetPasswordPage() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState(false);
+    const [sessionValid, setSessionValid] = useState(false);
+    const [checkingSession, setCheckingSession] = useState(true);
     const router = useRouter();
 
     useEffect(() => {
-        // Supabase will automatically handle the recovery session from the URL hash
-        const checkSession = async () => {
-            const { data: { session } } = await supabase.auth.getSession();
-            if (!session) {
-                setError('Sesi pemulihan tidak valid atau kadaluarsa. Silakan minta link baru.');
+        // Check if there's a recovery/invite token in the URL  hash
+        const checkRecoverySession = async () => {
+            try {
+                // Get session which should be set from the recovery link
+                const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+
+                if (session) {
+                    console.log('Valid recovery session found');
+                    setSessionValid(true);
+                } else {
+                    console.log('No session found, checking URL hash for recovery token');
+                    // If no session but hash exists, Supabase should handle it automatically
+                    const hash = window.location.hash;
+                    if (hash && (hash.includes('type=recovery') || hash.includes('type=invite'))) {
+                        // Wait a bit for Supabase to process the hash
+                        await new Promise(resolve => setTimeout(resolve, 1000));
+                        const { data: { session: retrySession } } = await supabase.auth.getSession();
+                        if (retrySession) {
+                            setSessionValid(true);
+                        } else {
+                            setError('Link pemulihan tidak valid atau sudah kadaluarsa. Silakan minta link baru.');
+                        }
+                    } else {
+                        setError('Link pemulihan tidak valid atau sudah kadaluarsa. Silakan minta link baru.');
+                    }
+                }
+            } catch (err: any) {
+                console.error('Session check error:', err);
+                setError('Terjadi kesalahan. Silakan coba lagi.');
+            } finally {
+                setCheckingSession(false);
             }
         };
-        checkSession();
+
+        checkRecoverySession();
     }, []);
 
-    async function handleReset(e: React.FormEvent) {
+    async function handleResetPassword(e: React.FormEvent) {
         e.preventDefault();
 
         if (password !== confirmPassword) {
@@ -40,10 +73,10 @@ export default function ResetPasswordPage() {
         setLoading(true);
         setError(null);
 
-        const { error } = await supabase.auth.updateUser({ password });
+        const { error: updateError } = await supabase.auth.updateUser({ password });
 
-        if (error) {
-            setError(error.message);
+        if (updateError) {
+            setError(updateError.message);
             setLoading(false);
         } else {
             setSuccess(true);
@@ -54,127 +87,134 @@ export default function ResetPasswordPage() {
         }
     }
 
-    return (
-        <div style={{
-            minHeight: '100vh',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            background: 'var(--accent)',
-            padding: '2rem'
-        }}>
-            <div className="card animate-fade-in" style={{
-                width: '100%',
-                maxWidth: '400px',
-                padding: '2.5rem',
-                boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)'
-            }}>
-                <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-                    <div style={{
-                        width: '64px',
-                        height: '64px',
-                        background: 'var(--primary)',
-                        borderRadius: '50%',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        marginBottom: '1rem',
-                        color: 'white'
-                    }}>
-                        <KeyRound size={32} />
-                    </div>
-                    <h1 className="heading-m">Atur Ulang Password</h1>
-                    <p style={{ color: 'var(--secondary)', fontSize: '0.875rem' }}>
-                        Buat password baru untuk akun anda.
-                    </p>
+    if (checkingSession) {
+        return (
+            <div className="relative min-h-screen w-full flex items-center justify-center p-6 overflow-hidden bg-[#fcfcfc]">
+                {/* Soft Ambient Light-Leak Background */}
+                <div className="absolute inset-0 z-0 opacity-40">
+                    <div className="absolute top-[-20%] left-[-10%] w-[60%] h-[60%] rounded-full bg-indigo-100 blur-[120px]" />
+                    <div className="absolute bottom-[-20%] right-[-10%] w-[70%] h-[70%] rounded-full bg-blue-50 blur-[150px]" />
+                    <div className="absolute top-[30%] right-[10%] w-[40%] h-[40%] rounded-full bg-violet-50 blur-[100px]" />
                 </div>
 
-                {error && (
-                    <div style={{
-                        background: '#fee2e2',
-                        color: '#b91c1c',
-                        padding: '1rem',
-                        borderRadius: 'var(--radius)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '0.75rem',
-                        marginBottom: '1.5rem',
-                        fontSize: '0.875rem',
-                        border: '1px solid #fecaca'
-                    }}>
-                        <ShieldAlert size={20} />
-                        <span>{error}</span>
-                    </div>
-                )}
+                <div className="relative z-10 flex flex-col items-center gap-4">
+                    <Loader2 className="animate-spin text-primary" size={40} />
+                    <p className="text-slate-600 font-bold">Memverifikasi sesi...</p>
+                </div>
+            </div>
+        );
+    }
 
-                {success ? (
-                    <div style={{
-                        background: '#f0fdf4',
-                        color: '#15803d',
-                        padding: '1rem',
-                        borderRadius: 'var(--radius)',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'center',
-                        gap: '1rem',
-                        textAlign: 'center'
-                    }}>
-                        <CheckCircle2 size={48} />
-                        <div>
-                            <p className="font-bold">Password Berhasil Diubah!</p>
-                            <p className="text-sm mt-1">Mengalihkan ke halaman login...</p>
-                        </div>
-                    </div>
-                ) : (
-                    <form onSubmit={handleReset} style={{ display: 'grid', gap: '1.25rem' }}>
-                        <div>
-                            <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.5rem' }}>
-                                Password Baru
-                            </label>
-                            <input
-                                type="password"
-                                required
-                                minLength={6}
-                                placeholder="••••••••"
-                                className="text-senior"
-                                style={{ width: '100%', padding: '0.75rem', borderRadius: 'var(--radius)', border: '1px solid var(--border)' }}
-                                value={password}
-                                onChange={(e) => setPassword(e.target.value)}
-                            />
-                        </div>
+    return (
+        <div className="relative min-h-screen w-full flex items-center justify-center p-6 overflow-hidden bg-[#fcfcfc]">
+            {/* Soft Ambient Light-Leak Background */}
+            <div className="absolute inset-0 z-0 opacity-40">
+                <div className="absolute top-[-20%] left-[-10%] w-[60%] h-[60%] rounded-full bg-indigo-100 blur-[120px]" />
+                <div className="absolute bottom-[-20%] right-[-10%] w-[70%] h-[70%] rounded-full bg-blue-50 blur-[150px]" />
+                <div className="absolute top-[30%] right-[10%] w-[40%] h-[40%] rounded-full bg-violet-50 blur-[100px]" />
+            </div>
 
-                        <div>
-                            <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.5rem' }}>
-                                Konfirmasi Password
-                            </label>
-                            <input
-                                type="password"
-                                required
-                                placeholder="••••••••"
-                                className="text-senior"
-                                style={{ width: '100%', padding: '0.75rem', borderRadius: 'var(--radius)', border: '1px solid var(--border)' }}
-                                value={confirmPassword}
-                                onChange={(e) => setConfirmPassword(e.target.value)}
-                            />
+            {/* Content Wrap */}
+            <div className="relative z-10 w-full max-w-[440px] animate-in fade-in slide-in-from-bottom-4 duration-1000">
+                <Card className="border-white bg-white/70 backdrop-blur-xl shadow-[0_32px_64px_-16px_rgba(0,0,0,0.08)] rounded-[2.5rem] overflow-hidden">
+                    <CardHeader className="text-center pb-2 pt-10">
+                        <div className="mx-auto w-16 h-16 bg-primary rounded-2xl flex items-center justify-center mb-6 shadow-xl shadow-primary/10 transform rotate-3 hover:rotate-0 transition-transform duration-500">
+                            <KeyRound className="text-white w-8 h-8" />
                         </div>
+                        <CardTitle className="text-3xl font-black tracking-tight text-slate-900 mb-2">
+                            Atur Password Baru
+                        </CardTitle>
+                        <CardDescription className="text-slate-500 font-medium px-4">
+                            Buat password baru untuk akun panitia anda.
+                        </CardDescription>
+                    </CardHeader>
 
-                        <button
-                            type="submit"
-                            className="btn btn-primary"
-                            disabled={loading || !!error && error.includes('Sesi')}
-                            style={{ width: '100%', padding: '1rem', marginTop: '1rem' }}
-                        >
-                            {loading ? (
-                                <>
-                                    <Loader2 className="animate-spin" size={20} />
-                                    <span>Memperbarui...</span>
-                                </>
-                            ) : (
-                                <span>Simpan Password Baru</span>
-                            )}
-                        </button>
-                    </form>
-                )}
+                    <CardContent className="pt-6 px-8 pb-10">
+                        {error && (
+                            <div className="mb-6 p-4 rounded-2xl bg-red-50 text-red-600 text-sm flex items-center gap-3 border border-red-100 animate-in fade-in zoom-in duration-300">
+                                <ShieldAlert size={18} className="shrink-0" />
+                                <p className="font-semibold">{error}</p>
+                            </div>
+                        )}
+
+                        {success ? (
+                            <div className="p-8 rounded-2xl bg-emerald-50 border border-emerald-100 animate-in fade-in zoom-in duration-300">
+                                <div className="flex flex-col items-center gap-4 text-center">
+                                    <CheckCircle2 size={56} className="text-emerald-500" />
+                                    <div>
+                                        <p className="font-black text-emerald-600 text-lg mb-1">
+                                            Password Berhasil Diubah!
+                                        </p>
+                                        <p className="text-sm text-emerald-600 font-medium">
+                                            Mengalihkan ke halaman login...
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        ) : (
+                            <form onSubmit={handleResetPassword} className="space-y-6">
+                                <div className="space-y-2">
+                                    <Label className="text-slate-400 font-bold ml-1 text-[10px] uppercase tracking-[0.2em]">
+                                        Password Baru
+                                    </Label>
+                                    <Input
+                                        type="password"
+                                        required
+                                        minLength={6}
+                                        placeholder="••••••••"
+                                        disabled={!sessionValid}
+                                        className="h-14 bg-slate-50/50 border-slate-200 text-slate-900 placeholder:text-slate-300 focus:ring-primary focus:border-primary rounded-2xl transition-all text-base disabled:opacity-50"
+                                        value={password}
+                                        onChange={(e) => setPassword(e.target.value)}
+                                    />
+                                </div>
+
+                                <div className="space-y-2">
+                                    <Label className="text-slate-400 font-bold ml-1 text-[10px] uppercase tracking-[0.2em]">
+                                        Konfirmasi Password
+                                    </Label>
+                                    <Input
+                                        type="password"
+                                        required
+                                        placeholder="••••••••"
+                                        disabled={!sessionValid}
+                                        className="h-14 bg-slate-50/50 border-slate-200 text-slate-900 placeholder:text-slate-300 focus:ring-primary focus:border-primary rounded-2xl transition-all text-base disabled:opacity-50"
+                                        value={confirmPassword}
+                                        onChange={(e) => setConfirmPassword(e.target.value)}
+                                    />
+                                </div>
+
+                                <Button
+                                    type="submit"
+                                    disabled={loading || !sessionValid}
+                                    className="w-full h-15 py-7 rounded-2xl font-black text-lg shadow-2xl shadow-primary/20 hover:shadow-primary/30 transition-all active:scale-[0.98] bg-primary hover:bg-primary/90 text-white disabled:opacity-50"
+                                >
+                                    {loading ? (
+                                        <div className="flex items-center gap-2">
+                                            <Loader2 className="animate-spin" size={20} />
+                                            <span>MEMPERBARUI...</span>
+                                        </div>
+                                    ) : (
+                                        "SIMPAN PASSWORD BARU"
+                                    )}
+                                </Button>
+                            </form>
+                        )}
+
+                        <div className="mt-10 pt-8 border-t border-slate-100 flex flex-col items-center gap-4">
+                            <button
+                                type="button"
+                                onClick={() => router.push('/login')}
+                                className="text-xs font-bold text-slate-400 hover:text-primary transition-colors flex items-center gap-2"
+                            >
+                                <span className="text-base">←</span> Kembali ke Login
+                            </button>
+                            <p className="text-[10px] font-bold text-slate-300 uppercase tracking-[0.3em]">
+                                APRT2026 • E-VOTING SYSTEM
+                            </p>
+                        </div>
+                    </CardContent>
+                </Card>
             </div>
         </div>
     );
