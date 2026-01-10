@@ -111,101 +111,126 @@ function InvitationContent() {
           <p className="text-slate-400 font-black tracking-widest uppercase text-xs">Menyiapkan Data...</p>
         </div>
       ) : (
-        <div className="print-area">
-          {filteredVoters.map((voter) => (
-            <div key={voter.id} className="invitation-page-segment">
-              <div className="formal-invitation">
-                {/* Header Section */}
-                <div className="header-section">
-                  <p className="institution">Panitia Pemilihan Umum RT 12</p>
-                  <h2 className="main-title">UNDANGAN PEMILIHAN KETUA RT 12</h2>
-                  <p className="location-context">Pelem Kidul, Baturetno, Bantul</p>
-                  <div className="separator" />
+        <>
+          {/* Screen-only Preview List (Modern UI) */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 no-print">
+            {filteredVoters.map((voter) => (
+              <div key={voter.id} className="bg-white rounded-[2rem] p-6 shadow-xl shadow-slate-200/50 border border-slate-100 flex flex-col gap-4 group hover:scale-[1.02] transition-all">
+                <div className="flex justify-between items-start gap-4">
+                  <div className="space-y-1">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Warga Terdaftar</p>
+                    <h3 className="text-xl font-black text-slate-900 leading-tight">{voter.name}</h3>
+                    <p className="text-sm font-mono text-slate-500">{voter.nik || 'No NIK'}</p>
+                    <p className="text-xs text-slate-400 italic mt-2">{voter.address || 'Alamat tidak tersedia'}</p>
+                  </div>
+                  <div className="p-3 bg-slate-50 rounded-2xl border border-slate-100 group-hover:border-primary/20 transition-colors">
+                    <QRCodeSVG value={voter.invitation_code} size={64} level="M" />
+                  </div>
                 </div>
+                <div className="mt-auto pt-4 border-t border-slate-50 flex justify-between items-center">
+                  <span className="text-[10px] font-bold px-2 py-1 bg-primary/10 text-primary rounded-lg uppercase tracking-tight">
+                    {voter.invitation_code}
+                  </span>
+                  <Button variant="ghost" size="sm" onClick={() => { setSearch(voter.nik); setTimeout(window.print, 100); }} className="text-primary font-black hover:bg-primary/5 rounded-xl">
+                    Cetak Kertas Ini
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
 
-                {/* Body Section */}
-                <div className="body-section">
-                  <p className="opening">
-                    Dengan hormat, Kami mengundang Bapak/Ibu/Saudara/i untuk memilih ketua RT kita yang akan diadakan pada:
-                  </p>
-
-                  <div className="details-table">
-                    <div className="detail-row">
-                      <div className="detail-label">Hari / Tanggal</div>
-                      <div className="detail-value">: {formatElectionDate()}</div>
-                    </div>
-                    <div className="detail-row">
-                      <div className="detail-label">Tempat</div>
-                      <div className="detail-value">: {config?.location_detail || config?.location || '...'}</div>
-                    </div>
-                    <div className="detail-row">
-                      <div className="detail-label">Waktu</div>
-                      <div className="detail-value">: Jam {config?.start_time || '08:00'} - {config?.end_time || '12:00'} WIB</div>
-                    </div>
+          {/* Print-only Formal Layout */}
+          <div className="print-area hidden-on-screen">
+            {filteredVoters.map((voter) => (
+              <div key={voter.id} className="invitation-page-segment">
+                <div className="formal-invitation">
+                  {/* Header Section */}
+                  <div className="header-section">
+                    <p className="institution">Panitia Pemilihan Umum RT 12</p>
+                    <h2 className="main-title">UNDANGAN PEMILIHAN KETUA RT 12</h2>
+                    <p className="location-context">Pelem Kidul, Baturetno, Bantul</p>
+                    <div className="separator" />
                   </div>
 
-                  <div className="voter-box">
-                    <div className="voter-text">
-                      <p className="target-label">Kepada Yth,</p>
-                      <div className="voter-data-grid">
-                        <div className="voter-data-row">
-                          <span className="v-label">Nama</span>
-                          <span className="v-val">: <strong>{voter.name}</strong></span>
-                        </div>
-                        <div className="voter-data-row">
-                          <span className="v-label">NIK</span>
-                          <span className="v-val">: {voter.nik || '-'}</span>
-                        </div>
-                        <div className="voter-data-row">
-                          <span className="v-label">Alamat</span>
-                          <span className="v-val">: <em>{voter.address || '-'}</em></span>
-                        </div>
+                  {/* Body Section */}
+                  <div className="body-section">
+                    <p className="opening">
+                      Dengan hormat, Kami mengundang Bapak/Ibu/Saudara/i untuk memilih ketua RT kita yang akan diadakan pada:
+                    </p>
+
+                    <div className="details-table">
+                      <div className="detail-row">
+                        <div className="detail-label">Hari / Tanggal</div>
+                        <div className="detail-value">: {formatElectionDate()}</div>
+                      </div>
+                      <div className="detail-row">
+                        <div className="detail-label">Tempat</div>
+                        <div className="detail-value">: {config?.location_detail || config?.location || '...'}</div>
+                      </div>
+                      <div className="detail-row">
+                        <div className="detail-label">Waktu</div>
+                        <div className="detail-value">: Jam {config?.start_time || '08:00'} - {config?.end_time || '11:00'} WIB</div>
                       </div>
                     </div>
-                    <div className="qr-container">
-                      <QRCodeSVG value={voter.invitation_code} size={110} level="M" includeMargin={false} />
-                      <p className="qr-code-text">{voter.invitation_code}</p>
+
+                    <div className="voter-box">
+                      <div className="voter-text">
+                        <p className="target-label">Kepada Yth,</p>
+                        <div className="voter-data-grid">
+                          <div className="voter-data-row">
+                            <span className="v-label">Nama</span>
+                            <span className="v-val">: <strong>{voter.name}</strong></span>
+                          </div>
+                          <div className="voter-data-row">
+                            <span className="v-label">NIK</span>
+                            <span className="v-val">: {voter.nik || '-'}</span>
+                          </div>
+                          <div className="voter-data-row">
+                            <span className="v-label">Alamat</span>
+                            <span className="v-val">: <em>{voter.address || '-'}</em></span>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="qr-container">
+                        <QRCodeSVG value={voter.invitation_code} size={110} level="M" includeMargin={false} />
+                        <p className="qr-code-text">{voter.invitation_code}</p>
+                      </div>
                     </div>
+
+                    <p className="instruction">
+                      Dimohonkan kepada Bapak/Ibu/Saudara/i sekalian untuk membawa tanda pengenal berupa <strong>KTP</strong> dan juga <strong>undangan ini</strong> untuk dapat di-scan tanda hadirnya dan menerima surat suara.
+                    </p>
                   </div>
 
-                  <p className="instruction">
-                    Dimohonkan kepada Bapak/Ibu/Saudara/i sekalian untuk membawa tanda pengenal berupa <strong>KTP</strong> dan juga <strong>undangan ini</strong> untuk dapat di-scan tanda hadirnya dan menerima surat suara.
-                  </p>
-                </div>
-
-                {/* Footer Section */}
-                <div className="footer-section">
-                  <div className="closing">
-                    <p>Demikian disampaikan dengan penuh hormat.</p>
-                    <p>Terima kasih.</p>
-                  </div>
-                  <div className="signature">
-                    <p className="date-city">Yogyakarta, {getInvitationDate()}</p>
-                    <p className="regards">Hormat kami,</p>
-                    <div className="committee-box">
-                      <p className="committee-name underline font-bold">Panitia Pemilihan Umum RT 12</p>
-                      <p className="locality">Pelem Kidul</p>
+                  {/* Footer Section */}
+                  <div className="footer-section">
+                    <div className="closing">
+                      <p>Demikian disampaikan dengan penuh hormat.</p>
+                      <p>Terima kasih.</p>
+                    </div>
+                    <div className="signature">
+                      <p className="date-city">Yogyakarta, {getInvitationDate()}</p>
+                      <p className="regards">Hormat kami,</p>
+                      <div className="committee-box">
+                        <p className="committee-name underline font-bold text-black border-none">Panitia Pemilihan Umum RT 12</p>
+                        <p className="locality">Pelem Kidul</p>
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        </>
       )}
 
       <style jsx>{`
         @media screen {
           .invitation-page-segment {
-            background: white;
-            border: 1px solid #e2e8f0;
-            margin-bottom: 2rem;
-            padding: 1.5cm;
-            border-radius: 2rem;
-            box-shadow: 0 10px 30px -10px rgba(0,0,0,0.05);
-            max-width: 21cm;
-            margin-left: auto;
-            margin-right: auto;
+            display: none !important;
+          }
+          .hidden-on-screen {
+            display: none !important;
           }
           .no-print-bg { background-color: #f8fafc; }
         }
