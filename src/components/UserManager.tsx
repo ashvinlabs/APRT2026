@@ -122,33 +122,45 @@ export default function UserManager() {
     }
 
     async function fetchRoles() {
-        const { data } = await supabase.from('roles').select('id, name, color').order('priority', { ascending: false });
+        const { data, error } = await supabase
+            .from('roles')
+            .select('*')
+            .order('priority', { ascending: false });
         return data || [];
     }
 
+    // Helper: Check if staff member is Super Admin
+    function isSuperAdmin(member: StaffMember): boolean {
+        return member.roles.some(role => role.name === 'Super Admin');
+    }
+
+    // Helper: Check if current user can modify this staff member
+    function canModifyStaff(member: StaffMember): boolean {
+        // Super Admin can only be modified by themselves
+        if (isSuperAdmin(member)) {
+            return member.user_id === user?.user_id;
+        }
+        // Others can be modified by anyone with manage_staff permission
+        return hasPermission('manage_staff') || member.user_id === user?.user_id;
+    }
+
     async function toggleApproval(member: StaffMember) {
+        // Protect Super Admin
+        if (isSuperAdmin(member) && member.user_id !== user?.user_id) {
+            alert('Super Admin tidak dapat diubah oleh admin lain!');
+            return;
+        }
+
         setUpdating(member.id);
-
-        console.log('toggleApproval called', { member, currentUser: user });
-
-        const { data, error } = await supabase
+        const { error } = await supabase
             .from('staff')
-            .update({
-                is_approved: !member.is_approved,
-                approved_by: user?.user_id, // Use user_id (auth ID), not id (staff ID)
-                approved_at: !member.is_approved ? new Date().toISOString() : null
-            })
-            .eq('id', member.id)
-            .select();
-
-        console.log('Update result:', { data, error });
+            .update({ is_approved: !member.is_approved })
+            .eq('id', member.id);
 
         if (error) {
-            console.error('Update failed:', error);
-            alert(`Gagal update status: ${error.message}`);
+            alert('Gagal mengubah status: ' + error.message);
         } else {
-            console.log('Update successful!', data);
-            setStaff(prev => prev.map(s => s.id === member.id ? { ...s, is_approved: !s.is_approved } : s));
+            await fetchData();
         }
         setUpdating(null);
     }
@@ -172,6 +184,12 @@ export default function UserManager() {
     }
 
     async function deleteStaff(member: StaffMember) {
+        // Protect Super Admin
+        if (isSuperAdmin(member)) {
+            alert('Super Admin tidak dapat dihapus!');
+            return;
+        }
+
         if (!confirm(`Hapus petugas "${member.name}"? Tindakan ini tidak dapat dibatalkan.`)) return;
 
         setUpdating(member.id);
@@ -186,6 +204,12 @@ export default function UserManager() {
     async function handleEditStaff(e: React.FormEvent) {
         e.preventDefault();
         if (!editingMember) return;
+
+        // Protect Super Admin from other admins
+        if (isSuperAdmin(editingMember) && editingMember.user_id !== user?.user_id) {
+            alert('Super Admin hanya dapat diedit oleh dirinya sendiri!');
+            return;
+        }
 
         setUpdating(editingMember.id);
         const { error } = await supabase
@@ -419,7 +443,17 @@ export default function UserManager() {
                                             </DropdownMenuTrigger>
                                             <DropdownMenuContent align="end" className="w-56 rounded-xl shadow-2xl border-slate-100 p-2">
                                                 <DropdownMenuLabel className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2 mb-1">Akun Saya</DropdownMenuLabel>
-                                                {(hasPermission('manage_staff') || member.user_id === user?.user_id) && (
+
+                                                {/* Show Super Admin badge */}
+                                                {isSuperAdmin(member) && (
+                                                    <div className="px-2 py-2 mb-2">
+                                                        <Badge className="bg-gradient-to-r from-amber-500 to-orange-500 text-white font-black text-[10px]">
+                                                            🔒 SUPER ADMIN
+                                                        </Badge>
+                                                    </div>
+                                                )}
+
+                                                {canModifyStaff(member) && (
                                                     <DropdownMenuItem
                                                         onClick={() => { setEditingMember(member); setIsEditModalOpen(true); }}
                                                         className="flex items-center gap-2 font-bold py-2.5 rounded-lg cursor-pointer text-slate-700"
@@ -436,7 +470,7 @@ export default function UserManager() {
                                                     Reset Password
                                                 </DropdownMenuItem>
 
-                                                {hasPermission('manage_staff') && (
+                                                {hasPermission('manage_staff') && !isSuperAdmin(member) && (
                                                     <>
                                                         <DropdownMenuSeparator className="my-2" />
                                                         <DropdownMenuLabel className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2 mb-1">Administrasi</DropdownMenuLabel>
