@@ -15,7 +15,9 @@ export interface Permissions {
     manage_candidates?: boolean;
     manage_invitations?: boolean;
     check_in?: boolean;
-    mark_presence?: boolean;
+    mark_presence?: boolean; // Alias for check_in usually
+    view_dashboard?: boolean;
+    export_data?: boolean;
 }
 
 export interface Role {

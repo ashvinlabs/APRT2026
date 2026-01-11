@@ -11,6 +11,7 @@ Follow these steps to deploy the APRT2026 application to Vercel and Supabase.
 1. Create a new project on [Supabase](https://supabase.com/).
 2. In the Supabase Dashboard, go to **SQL Editor**.
 3. Create a new query and paste the contents of [schema.sql](file:///g:/Work/ashvinlabs/repos/APRT2026/schema.sql) and run it. This will create all necessary tables and RLS policies.
+   - *Note: For ongoing updates, follow the [Database Migrations Guide](file:///g:/Work/ashvinlabs/repos/APRT2026/docs/DATABASE_MIGRATIONS.md).*
 4. Go to **Project Settings > API** and copy:
    - `Project URL`
    - `anon public API Key`

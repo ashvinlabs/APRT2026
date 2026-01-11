@@ -20,7 +20,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     const [isLoading, setIsLoading] = useState(true);
     const router = useRouter();
 
-    const fetchUserProfile = async (userId: string) => {
+    const fetchUserProfile = async (userId: string, email?: string) => {
         // Fetch staff profile
         const { data: staff, error: staffError } = await supabase
             .from('staff')
@@ -56,6 +56,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 
         setUser({
             ...staff,
+            email: email || (staff as any).email || '',
             roles: mappedRoles,
             permissions
         });
@@ -66,7 +67,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         const { data: { user: authUser } } = await supabase.auth.getUser();
         console.log('UserContext: Auth user check:', authUser?.id);
         if (authUser) {
-            await fetchUserProfile(authUser.id);
+            await fetchUserProfile(authUser.id, authUser.email);
         } else {
             setUser(null);
             setIsLoading(false);
@@ -83,7 +84,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
             }
 
             if (session?.user) {
-                fetchUserProfile(session.user.id);
+                fetchUserProfile(session.user.id, session.user.email);
             } else {
                 setUser(null);
                 setIsLoading(false);

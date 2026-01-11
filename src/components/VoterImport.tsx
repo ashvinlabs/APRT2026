@@ -29,16 +29,30 @@ export default function VoterImport({ onComplete }: { onComplete: () => void }) 
 
             const voters = lines.slice(1).filter(line => line.trim()).map(line => {
                 const values = line.split(',').map(v => v.trim());
+                const name = values[headers.indexOf('nama')] || values[headers.indexOf('name')] || values[0];
+                const address = values[headers.indexOf('alamat')] || values[headers.indexOf('address')] || values[1];
+
+                // Use provided code or generate one from name + address hash
+                let code = values[headers.indexOf('kode')] || values[headers.indexOf('code')];
+                if (!code) {
+                    const hashInput = (name + address).toLowerCase().replace(/\s/g, '');
+                    let hash = 0;
+                    for (let i = 0; i < hashInput.length; i++) {
+                        hash = ((hash << 5) - hash) + hashInput.charCodeAt(i);
+                        hash |= 0;
+                    }
+                    code = Math.abs(hash).toString(36).substring(0, 6).toUpperCase();
+                }
+
                 return {
-                    name: values[headers.indexOf('nama')] || values[headers.indexOf('name')] || values[0],
-                    nik: values[headers.indexOf('nik')] || values[headers.indexOf('nik_nasional')] || '',
-                    address: values[headers.indexOf('alamat')] || values[headers.indexOf('address')] || values[1],
-                    invitation_code: values[headers.indexOf('kode')] || values[headers.indexOf('code')] || Math.random().toString(36).substring(2, 8).toUpperCase(),
+                    name,
+                    address,
+                    invitation_code: code
                 };
-            }).filter(v => v.nik); // Ensure NIK exists for upsert
+            }).filter(v => v.name && v.address); // Ensure basic data exists
 
             const { error } = await supabase.from('voters').upsert(voters, {
-                onConflict: 'nik'
+                onConflict: 'invitation_code'
             });
 
             if (error) {
@@ -61,8 +75,8 @@ export default function VoterImport({ onComplete }: { onComplete: () => void }) 
             </div>
 
             <p style={{ marginBottom: '1.5rem', color: 'var(--secondary)' }}>
-                Unggah file CSV dengan kolom minimal: <strong>nama, nik, alamat</strong>.
-                Data akan diperbarui otomatis jika NIK sudah ada (tidak akan duplikat).
+                Unggah file CSV dengan kolom minimal: <strong>nama, alamat</strong>.
+                Data akan diperbarui otomatis jika Kode Undangan sudah ada (tidak akan duplikat).
             </p>
 
             <div

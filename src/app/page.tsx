@@ -2,142 +2,290 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Users, UserCheck, BarChart3, Printer } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
-import LogoutButton from '@/components/LogoutButton';
+import {
+  Users,
+  UserCheck,
+  LayoutDashboard,
+  Printer,
+  Vote,
+  Settings,
+  ShieldCheck,
+  Info,
+  ArrowRight,
+  Loader2,
+  Calendar,
+  MapPin,
+  Clock,
+  Smartphone
+} from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
 import { useUser } from '@/components/UserContext';
+import LogoutButton from '@/components/LogoutButton';
+import PublicNavbar from '@/components/PublicNavbar';
 
 export default function HomePage() {
   const { user, hasPermission, isLoading } = useUser();
+  const [mounted, setMounted] = useState(false);
 
-  if (isLoading) {
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (isLoading || !mounted) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="w-10 h-10 animate-spin text-primary" />
+          <p className="text-sm font-bold text-slate-400 animate-pulse uppercase tracking-widest">Memuat Portal...</p>
+        </div>
       </div>
     );
   }
 
   const allFeatures = [
-    { title: 'Live Dashboard', description: 'Tampilan real-time hasil suara untuk monitor/TV.', icon: BarChart3, href: '/dashboard' },
+    {
+      title: 'Dashboard Hasil',
+      description: 'Pantau perolehan suara secara langsung dan transparan.',
+      icon: LayoutDashboard,
+      href: '/dashboard',
+      color: 'bg-blue-500',
+      lightColor: 'bg-blue-50'
+    },
     {
       title: 'Daftar Pemilih',
-      description: user ? 'Pendaftaran, import data, dan verifikasi undangan.' : 'Lihat Daftar Pemilih Tetap (DPT).',
+      description: user ? 'Kelola data pemilih, verifikasi, dan ekspor data.' : 'Cek status pendaftaran Anda dalam DPT.',
       icon: Users,
-      href: '/panitia/voters',
-      permission: 'manage_voters'
+      href: user ? '/panitia/voters' : '/check-dpt',
+      permission: 'manage_voters',
+      color: 'bg-indigo-500',
+      lightColor: 'bg-indigo-50'
     },
-    { title: 'Penghitungan Suara', description: 'Input manual perolehan suara dari kotak suara.', icon: UserCheck, href: '/panitia/tally', permission: 'manage_votes' },
-    { title: 'Cetak Undangan', description: 'Generate QR Code dan cetak kartu undangan warga.', icon: Printer, href: '/panitia/invitations', permission: 'manage_invitations' },
+    {
+      title: 'Meja Check-In',
+      description: 'Verifikasi kehadiran pemilih di lokasi pemungutan.',
+      icon: UserCheck,
+      href: '/panitia/check-in',
+      permission: 'check_in',
+      color: 'bg-emerald-500',
+      lightColor: 'bg-emerald-50'
+    },
+    {
+      title: 'Cetak Undangan',
+      description: 'Generate QR Code dan cetak kartu undangan fisik.',
+      icon: Printer,
+      href: '/panitia/invitations',
+      permission: 'manage_invitations',
+      color: 'bg-orange-500',
+      lightColor: 'bg-orange-50'
+    },
+    {
+      title: 'Input Suara',
+      description: 'Catat hasil penghitungan suara dari kotak fisik.',
+      icon: Vote,
+      href: '/panitia/tally',
+      permission: 'manage_votes',
+      color: 'bg-rose-500',
+      lightColor: 'bg-rose-50'
+    },
+    {
+      title: 'Manajemen Tim',
+      description: 'Kelola akses petugas dan pantau aktivitas sistem.',
+      icon: ShieldCheck,
+      href: '/panitia/staff',
+      permission: 'view_logs',
+      color: 'bg-slate-700',
+      lightColor: 'bg-slate-100'
+    },
+    {
+      title: 'Pengaturan',
+      description: 'Konfigurasi parameter sistem dan jadwal pemilihan.',
+      icon: Settings,
+      href: '/panitia/settings',
+      permission: 'manage_settings',
+      color: 'bg-violet-500',
+      lightColor: 'bg-violet-50'
+    },
+    {
+      title: 'Tentang Sistem',
+      description: 'Informasi mengenai aplikasi e-voting APRT 26.',
+      icon: Info,
+      href: '/about',
+      color: 'bg-teal-500',
+      lightColor: 'bg-teal-50'
+    },
   ];
 
-  // If not logged in, show only Live Dashboard & Public DPT.
-  // If logged in, filter by permissions.
   const features = allFeatures.filter(feature => {
     if (!user) {
-      return feature.href === '/dashboard' || feature.href === '/panitia/voters';
+      return feature.href === '/dashboard' || feature.href === '/check-dpt' || feature.href === '/about';
     }
-    if ((feature as any).permission) {
-      return hasPermission((feature as any).permission);
+    if (feature.permission) {
+      const hasPerm = hasPermission(feature.permission as any);
+      return hasPerm;
     }
     return true;
   });
 
   return (
-    <div className="min-h-screen bg-[#fcfcfc] p-8">
-      <div className="max-w-7xl mx-auto">
-        <header className="text-center mb-16 mt-8">
-          <h1 className="text-5xl md:text-6xl font-black text-slate-900 mb-4 tracking-tight">
-            <span className="text-primary">APRT</span> 2026
+    <div className="min-h-screen bg-[#f8f9fc] flex flex-col">
+      <PublicNavbar variant="dark" />
+
+      {/* Hero Section */}
+      <div className="relative bg-slate-900 pt-32 pb-32 md:pt-48 md:pb-48">
+        {/* Decorative background elements */}
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-full overflow-hidden pointer-events-none">
+          <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[60%] rounded-full bg-blue-600/20 blur-[120px]" />
+          <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[60%] rounded-full bg-blue-500/10 blur-[120px]" />
+        </div>
+
+        <div className="container relative z-10 px-6 mx-auto text-center">
+          <div className="inline-flex items-center gap-2 px-3 py-1 mb-8 rounded-full bg-white/5 border border-white/10 backdrop-blur-md">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-500 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
+            </span>
+            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white/70">Sistem E-Voting Terpadu</span>
+          </div>
+
+          <h1 className="text-5xl md:text-7xl lg:text-8xl font-black text-white mb-6 tracking-tighter leading-[0.9]">
+            APRT<span className="text-blue-500 italic">26</span>
           </h1>
-          <p className="text-xl text-slate-600 font-medium">
-            Aplikasi Pemilu RT 12 Pelem Kidul
+
+          <p className="max-w-2xl mx-auto text-lg md:text-xl text-slate-400 font-medium leading-relaxed mb-10">
+            Platform pemilihan elektronik RT 12 Pelem Kidul yang modern, aman, dan transparan untuk masa depan lingkungan kita.
           </p>
-        </header>
+
+          {user && (
+            <div className="flex flex-col items-center gap-4">
+              <div className="flex items-center gap-4 p-2 pl-2 pr-6 rounded-full bg-white/5 border border-white/10 backdrop-blur-xl animate-in fade-in slide-in-from-bottom-4 duration-700">
+                <Avatar className="h-12 w-12 border-2 border-blue-500/20 shadow-xl shrink-0">
+                  <AvatarImage src={user.photo_url || ''} className="object-cover" />
+                  <AvatarFallback className="bg-blue-600 text-white font-bold text-lg">
+                    {(user.name || 'U')[0].toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="text-left">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-blue-400 leading-none mb-1">Selamat Datang</p>
+                  <p className="text-lg font-black text-white leading-none">{user.name}</p>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Event Highlights - Floating */}
+        <div className="absolute bottom-0 left-0 w-full translate-y-1/2 px-6">
+          <div className="max-w-4xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-4">
+            {[
+              { icon: Calendar, label: 'Hari/Tanggal Pemilihan', value: 'Minggu, 18 Januari 2026' },
+              { icon: Clock, label: 'Waktu', value: '08:00 - 14:00 WIB' },
+              { icon: MapPin, label: 'Lokasi', value: 'Balai Warga RT 12' },
+            ].map((item, i) => (
+              <div key={i} className="flex items-center gap-4 p-5 rounded-[1.5rem] bg-white border border-slate-100 shadow-xl shadow-slate-200/50">
+                <div className="w-12 h-12 rounded-xl bg-slate-50 flex items-center justify-center text-blue-600 shrink-0">
+                  <item.icon size={22} />
+                </div>
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-wider text-slate-400 leading-none mb-1">{item.label}</p>
+                  <p className="text-sm font-black text-slate-900 leading-none">{item.value}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Portal Content */}
+      <div className="container mx-auto px-6 pt-32 pb-20 flex-1">
+        <div className="text-center mb-12">
+          <h2 className="text-3xl font-black text-slate-900 tracking-tight mb-2 uppercase">Layanan <span className="text-blue-600 italic">Portal Utama</span></h2>
+          <p className="text-slate-500 font-bold">Pilih layanan yang ingin Anda akses hari ini.</p>
+        </div>
 
         <div className={cn(
-          "grid gap-6 mb-20 justify-center",
-          features.length === 1 ? "grid-cols-1 max-w-[400px] mx-auto" :
-            features.length === 2 ? "grid-cols-1 md:grid-cols-2 max-w-[850px] mx-auto" :
-              "grid-cols-1 md:grid-cols-2 lg:grid-cols-4"
+          "grid gap-6 mx-auto",
+          features.length < 4
+            ? (features.length === 1 ? "max-w-md grid-cols-1" : features.length === 2 ? "max-w-xl grid-cols-1 sm:grid-cols-2" : "max-w-4xl grid-cols-1 sm:grid-cols-3")
+            : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-4"
         )}>
           {features.map((feature, idx) => (
             <Link key={idx} href={feature.href} className="group">
-              <Card className="h-full border-zinc-200/50 bg-white/50 backdrop-blur-sm hover:shadow-[0_20px_40px_-12px_rgba(0,0,0,0.05)] transition-all duration-500 rounded-[2rem] overflow-hidden">
-                <CardHeader className="text-center p-8">
-                  <div className="mx-auto mb-6 w-20 h-20 rounded-2xl bg-[#f9f9fb] border border-zinc-100 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-all duration-500 group-hover:rotate-3 shadow-sm">
-                    <feature.icon size={40} />
+              <Card className="h-full border-none bg-white shadow-sm shadow-slate-200/50 hover:shadow-2xl hover:shadow-blue-500/10 transition-all duration-500 rounded-[2.5rem] overflow-hidden group-hover:-translate-y-2 relative border border-white hover:border-blue-500/20">
+                <div className={cn("absolute top-0 right-0 w-32 h-32 -mr-8 -mt-8 rounded-full blur-3xl opacity-0 group-hover:opacity-20 transition-opacity duration-500", feature.color)} />
+
+                <CardHeader className="p-8 flex flex-col items-center text-center relative z-10">
+                  <div className={cn(
+                    "w-20 h-20 rounded-[1.75rem] flex items-center justify-center transition-all duration-500 group-hover:scale-110 group-hover:rotate-6 mb-6",
+                    feature.lightColor,
+                  )}>
+                    <feature.icon size={36} className={cn("transition-colors duration-500", feature.color.replace('bg-', 'text-'))} />
+                    <div className={cn("absolute inset-0 rounded-[1.75rem] opacity-0 group-hover:opacity-100 transition-opacity duration-500 -z-10", feature.color)} />
                   </div>
-                  <CardTitle className="mb-3 text-xl">{feature.title}</CardTitle>
-                  <CardDescription className="text-sm leading-relaxed">{feature.description}</CardDescription>
+
+                  <CardTitle className="text-xl font-black text-slate-900 mb-3 tracking-tight group-hover:text-blue-600 transition-colors uppercase italic">{feature.title}</CardTitle>
+                  <CardDescription className="text-sm font-bold text-slate-400 leading-relaxed min-h-[48px]">
+                    {feature.description}
+                  </CardDescription>
                 </CardHeader>
+
+                <div className="px-8 pb-8 flex justify-center mt-auto">
+                  <div className="flex items-center gap-2 text-blue-600 font-black text-xs uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-all duration-500 translate-y-2 group-hover:translate-y-0">
+                    Masuk Sekarang <ArrowRight size={14} />
+                  </div>
+                </div>
               </Card>
             </Link>
           ))}
         </div>
-
-        <footer className="flex flex-col items-center gap-8">
-          <div className="w-full max-w-md">
-            <Card className="border-zinc-200/60 shadow-[0_12px_24px_-8px_rgba(0,0,0,0.04)] rounded-3xl overflow-hidden">
-              <CardHeader className="text-center bg-white/50 backdrop-blur-md">
-                {!user ? (
-                  <>
-                    <CardTitle className="text-base font-bold text-slate-700 mb-4">Akses Panitia</CardTitle>
-                    <div className="flex flex-col gap-3">
-                      <Link href="/login">
-                        <Button size="lg" className="w-full font-bold">
-                          Login Panitia
-                        </Button>
-                      </Link>
-                      <Link href="/register">
-                        <Button variant="outline" size="lg" className="w-full font-bold">
-                          Daftar Petugas
-                        </Button>
-                      </Link>
-                    </div>
-                  </>
-                ) : (
-                  <div className="space-y-6">
-                    <div className="flex items-center justify-center gap-4">
-                      <div className="w-14 h-14 rounded-2xl bg-primary text-white flex items-center justify-center font-bold text-2xl shadow-inner">
-                        {user.name?.[0].toUpperCase() || user.user_id?.[0].toUpperCase()}
-                      </div>
-                      <div className="text-left">
-                        <div className="flex items-center gap-2">
-                          <span className="px-2 py-0.5 rounded-full bg-primary/10 text-primary text-[10px] font-black uppercase tracking-wider">Terverifikasi</span>
-                          <span className="text-[10px] text-slate-400 font-bold uppercase">{user.roles?.[0]?.name || 'Petugas'}</span>
-                        </div>
-                        <p className="text-lg font-black text-slate-900 leading-none mt-1">{user.name}</p>
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-1 gap-2">
-                      <LogoutButton />
-                    </div>
-                  </div>
-                )}
-              </CardHeader>
-            </Card>
-          </div>
-
-
-          <div className="text-center space-y-1">
-            <p className="text-sm text-slate-400 font-bold">
-              &copy; 2026 Panitia Pemilu RT 12 Baturetno.
-            </p>
-            <p className="text-[10px] text-slate-300 font-medium uppercase tracking-[0.2em]">Sistem E-Voting Terintegrasi</p>
-            <p className="text-[10px] text-slate-300 font-medium">
-              Designed and developed by <span className="font-bold text-primary">Ashvin Labs</span>
-            </p>
-          </div>
-        </footer>
       </div>
+
+      {!user && (
+        <div className="container mx-auto px-6 pb-20">
+          <div className="mt-20 text-center animate-in fade-in slide-in-from-bottom-8 duration-1000">
+            <div className="max-w-md mx-auto p-8 rounded-[2.5rem] bg-white border border-slate-100 shadow-xl shadow-slate-200/50">
+              <h3 className="text-xl font-black text-slate-900 mb-2 uppercase italic">Akses <span className="text-blue-600 font-black italic">Khusus Panitia</span></h3>
+              <p className="text-sm font-bold text-slate-400 mb-8 leading-relaxed">Silakan login untuk mengakses fitur manajemen dan administrasi pemilu.</p>
+              <div className="flex flex-col gap-3">
+                <Link href="/login" className="w-full no-underline">
+                  <Button size="lg" className="h-14 w-full rounded-2xl font-black text-lg bg-blue-600 hover:bg-blue-700 text-white shadow-xl shadow-blue-500/20 transition-all active:scale-95">
+                    Login Sekarang
+                  </Button>
+                </Link>
+                <Link href="/register" className="w-full no-underline">
+                  <Button variant="ghost" size="lg" className="h-14 w-full rounded-2xl font-black text-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50">
+                    Daftar Petugas Baru
+                  </Button>
+                </Link>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Footer */}
+      <footer className="container mx-auto px-6 py-12 border-t border-slate-100 flex flex-col md:flex-row items-center justify-between gap-8 mt-auto">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-slate-900 flex items-center justify-center text-white font-black text-xl italic">A</div>
+          <div>
+            <p className="text-sm font-black text-slate-900 leading-none italic uppercase">APRT<span className="text-blue-600 italic">26</span></p>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">E-Voting Solution</p>
+          </div>
+        </div>
+
+        <div className="text-center md:text-right hidden sm:block">
+          <p className="text-[10px] text-slate-300 font-black uppercase tracking-[0.2em] mb-1">Designed and developed by</p>
+          <p className="text-sm font-black text-slate-900 tracking-tight italic">ASHVIN <span className="text-blue-600 italic">LABS</span></p>
+        </div>
+
+        {user && (
+          <div className="flex items-center bg-white p-1 rounded-2xl border border-slate-100 shadow-sm">
+            <LogoutButton />
+          </div>
+        )}
+      </footer>
     </div>
   );
 }
-
-// Add Loader2 import from lucide-react if not already there
-import { Loader2 } from 'lucide-react';

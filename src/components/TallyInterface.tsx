@@ -4,9 +4,10 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { CheckCircle2, XCircle, Loader2, History, Vote, AlertTriangle, Fingerprint, Lock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
+import { logActivity } from '@/lib/logger';
 
 interface Candidate {
     id: string;
@@ -27,6 +28,7 @@ export default function TallyInterface() {
     const [totalVotes, setTotalVotes] = useState(0);
     const [candidateVotes, setCandidateVotes] = useState<Record<string, number>>({});
     const [invalidVotes, setInvalidVotes] = useState(0);
+    const [counterMode, setCounterMode] = useState(false);
 
     const [mounted, setMounted] = useState(false);
 
@@ -62,6 +64,33 @@ export default function TallyInterface() {
             channels.forEach(ch => supabase.removeChannel(ch));
         };
     }, []);
+
+    // Counter Mode Keyboard Listeners
+    useEffect(() => {
+        if (!counterMode || isVotingOpen || totalVotes >= totalPresent) return;
+
+        const handleKeyDown = (e: KeyboardEvent) => {
+            // Number keys 1-9 for candidates
+            const numKey = parseInt(e.key);
+            if (!isNaN(numKey) && numKey > 0 && numKey <= candidates.length) {
+                const candidate = candidates[numKey - 1];
+                recordVote(candidate.id);
+            }
+
+            // Key '0' or 'X' for invalid votes
+            if (e.key === '0' || e.key.toLowerCase() === 'x') {
+                recordVote(null, false);
+            }
+
+            // Key 'Backspace' or 'U' for undo
+            if (e.key === 'Backspace' || e.key.toLowerCase() === 'u') {
+                undoLastVote();
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [counterMode, candidates, isVotingOpen, totalPresent, totalVotes]);
 
     async function fetchInitialData() {
         setLoading(true);
@@ -113,7 +142,15 @@ export default function TallyInterface() {
     }
 
     async function recordVote(candidateId: string | null, isValid: boolean = true) {
-        if (!isVotingOpen) return;
+        if (isVotingOpen) {
+            alert('Voting masih dalam status TERBUKA. Silakan tutup voting di Pengaturan terlebih dahulu sebelum melakukan penghitungan suara.');
+            return;
+        }
+
+        if (totalVotes >= totalPresent) {
+            alert('Jumlah suara masuk sudah mencapai batas jumlah kehadiran pemilih.');
+            return;
+        }
 
         setRecording(candidateId || 'invalid');
 
@@ -121,12 +158,12 @@ export default function TallyInterface() {
             candidate_id: candidateId,
             is_valid: isValid
         });
-
         if (error) {
             console.error('Save failed:', error);
         } else {
             const name = candidateId ? candidates.find(c => c.id === candidateId)?.name || 'Kandidat' : 'Suara Tidak Sah';
             showNotification(name, isValid ? 'valid' : 'invalid');
+            await logActivity('record_vote', 'manage_votes', { candidate_name: name, is_valid: isValid });
         }
         setRecording(null);
     }
@@ -145,6 +182,7 @@ export default function TallyInterface() {
         if (last && !error) {
             await supabase.from('votes').delete().eq('id', last.id);
             showNotification('Pembatalan Suara', 'undo');
+            await logActivity('undo_vote', 'undo_vote', { vote_id: last.id });
         }
     }
 
@@ -154,7 +192,13 @@ export default function TallyInterface() {
     }
 
     const isLimitReached = totalVotes >= totalPresent && totalPresent > 0;
-    const isGlobalDisabled = !isVotingOpen || isLimitReached;
+    const isGlobalDisabled = isVotingOpen || isLimitReached || (totalPresent === 0);
+
+    const sortedCandidates = [...candidates].sort((a, b) => {
+        const votesA = candidateVotes[a.id] || 0;
+        const votesB = candidateVotes[b.id] || 0;
+        return votesB - votesA;
+    });
 
     if (!mounted) return null;
 
@@ -207,33 +251,26 @@ export default function TallyInterface() {
                     </CardContent>
                 </Card>
 
-                <Card className="border-none bg-white ring-1 ring-slate-100 shadow-xl shadow-slate-200/50 rounded-[2rem] flex flex-col justify-center">
-                    <CardContent className="p-8 text-center">
-                        {isLimitReached ? (
-                            <div className="space-y-2">
-                                <div className="inline-flex p-3 rounded-full bg-emerald-100 text-emerald-600 mb-2">
-                                    <CheckCircle2 size={32} />
-                                </div>
-                                <h3 className="text-xl font-black text-slate-900">Penghitungan Selesai</h3>
-                                <p className="text-slate-400 text-xs font-bold">Semua pemilih hadir telah memberikan suara.</p>
-                            </div>
-                        ) : !isVotingOpen ? (
-                            <div className="space-y-2">
-                                <div className="inline-flex p-3 rounded-full bg-slate-100 text-slate-500 mb-2">
-                                    <Lock size={32} />
-                                </div>
-                                <h3 className="text-xl font-black text-slate-900">Akses Ditutup</h3>
-                                <p className="text-slate-400 text-xs font-bold">Menunggu panitia membuka akses voting.</p>
-                            </div>
-                        ) : (
-                            <div className="space-y-2 animate-pulse">
-                                <div className="inline-flex p-3 rounded-full bg-blue-100 text-blue-600 mb-2">
-                                    <Loader2 className="animate-spin" size={32} />
-                                </div>
-                                <h3 className="text-xl font-black text-blue-900">Sedang Berlangsung</h3>
-                                <p className="text-blue-400 text-xs font-bold">Silahkan input suara dari surat suara.</p>
-                            </div>
-                        )}
+                <Card
+                    onClick={() => setCounterMode(!counterMode)}
+                    className={cn(
+                        "border-none shadow-xl rounded-[2rem] flex flex-col justify-center overflow-hidden cursor-pointer transition-all",
+                        counterMode ? "bg-primary text-white scale-105 shadow-primary/40 ring-4 ring-primary ring-offset-4" : "bg-white ring-1 ring-slate-100 shadow-slate-200/50"
+                    )}
+                >
+                    <CardHeader className={cn("p-4 border-b", counterMode ? "bg-primary/20 border-white/10" : "bg-slate-50 border-slate-100")}>
+                        <p className={cn("text-[10px] font-black uppercase tracking-widest text-center", counterMode ? "text-white" : "text-slate-400")}>
+                            {counterMode ? "COUNTER MODE: AKTIF" : "KLIK UNTUK COUNTER MODE"}
+                        </p>
+                    </CardHeader>
+                    <CardContent className="p-4 flex flex-col items-center justify-center">
+                        <div className={cn("flex items-center gap-3", counterMode ? "text-white" : "text-slate-400")}>
+                            <Fingerprint size={24} className={counterMode ? "animate-pulse" : ""} />
+                            <span className="text-xl font-black">Mode Cepat</span>
+                        </div>
+                        <p className={cn("text-[8px] font-bold uppercase mt-2 opacity-60", counterMode ? "text-white" : "text-slate-400")}>
+                            Gunakan Tombol Angka (1-{candidates.length})
+                        </p>
                     </CardContent>
                 </Card>
             </div>
@@ -328,13 +365,33 @@ export default function TallyInterface() {
                 </div>
             </div>
 
-            {/* Limit Warning */}
-            {isLimitReached && (
-                <div className="fixed bottom-0 left-0 w-full p-4 bg-emerald-500/90 backdrop-blur-md text-white z-40 flex items-center justify-center gap-4 animate-in slide-in-from-bottom-full duration-500">
+            {/* Warnings */}
+            {isVotingOpen && (
+                <div className="fixed bottom-0 left-0 w-full p-6 bg-rose-600 text-white z-40 flex items-center justify-center gap-4 animate-in slide-in-from-bottom-full duration-500 shadow-[0_-20px_50px_rgba(225,29,72,0.3)]">
+                    <Lock size={32} className="text-white animate-pulse" />
+                    <div>
+                        <p className="font-black uppercase tracking-[0.2em] text-sm">Akses Terkunci: Voting Masih Terbuka</p>
+                        <p className="text-xs font-bold opacity-90">Penghitungan suara (Tally) hanya dapat dilakukan setelah status voting di-set ke "Tertutup" di menu Pengaturan.</p>
+                    </div>
+                </div>
+            )}
+
+            {!isVotingOpen && isLimitReached && (
+                <div className="fixed bottom-0 left-0 w-full p-6 bg-emerald-500 text-white z-40 flex items-center justify-center gap-4 animate-in slide-in-from-bottom-full duration-500 shadow-[0_-20px_50px_rgba(16,185,129,0.3)]">
                     <CheckCircle2 size={32} className="text-white animate-bounce" />
                     <div>
-                        <p className="font-black uppercase tracking-widest text-sm">Penghitungan Selesai</p>
-                        <p className="text-xs font-medium opacity-90">Jumlah suara masuk ({totalVotes}) telah mencapai jumlah kehadiran ({totalPresent}).</p>
+                        <p className="font-black uppercase tracking-[0.2em] text-sm">Penghitungan Selesai</p>
+                        <p className="text-xs font-bold opacity-90">Jumlah suara masuk ({totalVotes}) telah mencapai batas kehadiran pemilih ({totalPresent}).</p>
+                    </div>
+                </div>
+            )}
+
+            {!isVotingOpen && !isLimitReached && totalPresent === 0 && (
+                <div className="fixed bottom-0 left-0 w-full p-6 bg-amber-500 text-white z-40 flex items-center justify-center gap-4 animate-in slide-in-from-bottom-full duration-500">
+                    <AlertTriangle size={32} className="text-white" />
+                    <div>
+                        <p className="font-black uppercase tracking-[0.2em] text-sm">Menunggu Kehadiran</p>
+                        <p className="text-xs font-bold opacity-90">Belum ada pemilih yang terverifikasi hadir (Check-in). Tally tidak dapat dimulai.</p>
                     </div>
                 </div>
             )}

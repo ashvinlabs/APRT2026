@@ -41,21 +41,42 @@ interface Role {
     staff_count?: number;
 }
 
-// All available permissions with labels
-const PERMISSION_OPTIONS: { key: keyof Permissions; label: string; description: string }[] = [
-    { key: 'all', label: 'Full Access', description: 'Complete system access (Super Admin)' },
-    { key: 'manage_staff', label: 'Manage Staff', description: 'Approve and manage staff accounts' },
-    { key: 'manage_roles', label: 'Manage Roles', description: 'Create, edit, and delete roles' },
-    { key: 'manage_voters', label: 'Manage Voters', description: 'Full voter data management' },
-    { key: 'edit_voters', label: 'Edit Voters', description: 'Edit voter information' },
-    { key: 'manage_votes', label: 'Manage Votes', description: 'Record and manage votes' },
-    { key: 'undo_vote', label: 'Undo Vote', description: 'Ability to undo recorded votes' },
-    { key: 'view_logs', label: 'View Logs', description: 'Access activity logs' },
-    { key: 'manage_settings', label: 'Manage Settings', description: 'Configure system settings' },
-    { key: 'manage_candidates', label: 'Manage Candidates', description: 'Add/edit candidates' },
-    { key: 'manage_invitations', label: 'Manage Invitations', description: 'Generate invitation codes' },
-    { key: 'check_in', label: 'Check-In', description: 'Check-in voters at polling station' },
-    { key: 'mark_presence', label: 'Mark Presence', description: 'Mark voter attendance' },
+// All available permissions grouped by category
+const PERMISSION_GROUPS = [
+    {
+        name: 'Sistem & Keamanan',
+        permissions: [
+            { key: 'all' as keyof Permissions, label: 'Full Access', description: 'Akses sistem penuh (Super Admin)' },
+            { key: 'view_logs' as keyof Permissions, label: 'Lihat Aktivitas', description: 'Melihat log audit dan riwayat sistem' },
+            { key: 'manage_settings' as keyof Permissions, label: 'Pengaturan Sistem', description: 'Mengubah konfigurasi pemilihan' },
+        ]
+    },
+    {
+        name: 'Manajemen Tim',
+        permissions: [
+            { key: 'manage_staff' as keyof Permissions, label: 'Kelola Petugas', description: 'Menyetujui dan menghapus akun petugas' },
+            { key: 'manage_roles' as keyof Permissions, label: 'Kelola Peran', description: 'Membuat dan mengubah hak akses (Role)' },
+        ]
+    },
+    {
+        name: 'Data Pemilih (DPT)',
+        permissions: [
+            { key: 'manage_voters' as keyof Permissions, label: 'Kelola Pemilih', description: 'Tambah/Hapus data pemilih secara penuh' },
+            { key: 'edit_voters' as keyof Permissions, label: 'Edit Pemilih', description: 'Mengubah informasi detail pemilih' },
+            { key: 'manage_invitations' as keyof Permissions, label: 'Kelola Undangan', description: 'Generate kode dan cetak undangan' },
+            { key: 'export_data' as keyof Permissions, label: 'Ekspor Data', description: 'Download data ke CSV/Excel' },
+        ]
+    },
+    {
+        name: 'Operasional Pemilihan',
+        permissions: [
+            { key: 'check_in' as keyof Permissions, label: 'Check-In Pemilih', description: 'Scan QR dan verifikasi kehadiran' },
+            { key: 'manage_votes' as keyof Permissions, label: 'Input Perolehan', description: 'Mencatat suara masuk (Tally)' },
+            { key: 'undo_vote' as keyof Permissions, label: 'Batalkan Suara', description: 'Menghapus kesalahan input suara' },
+            { key: 'manage_candidates' as keyof Permissions, label: 'Kelola Kandidat', description: 'Tambah/Edit calon ketua' },
+            { key: 'view_dashboard' as keyof Permissions, label: 'Lihat Dashboard', description: 'Melihat visualisasi hasil real-time' },
+        ]
+    }
 ];
 
 // Protected system roles that cannot be deleted
@@ -405,22 +426,29 @@ export default function RoleManager() {
                         </div>
 
                         {/* Permissions */}
-                        <div className="space-y-3">
-                            <Label className="font-bold text-base">Permissions</Label>
-                            <div className="space-y-2 max-h-[300px] overflow-y-auto border rounded-lg p-4 bg-slate-50">
-                                {PERMISSION_OPTIONS.map((perm) => (
-                                    <div key={perm.key} className="flex items-start gap-3 p-2 hover:bg-white rounded-lg transition-colors">
-                                        <Checkbox
-                                            id={perm.key}
-                                            checked={!!formData.permissions[perm.key]}
-                                            onCheckedChange={() => togglePermission(perm.key)}
-                                            className="mt-1"
-                                        />
-                                        <div className="flex-1">
-                                            <Label htmlFor={perm.key} className="font-bold cursor-pointer">
-                                                {perm.label}
-                                            </Label>
-                                            <p className="text-xs text-slate-500">{perm.description}</p>
+                        <div className="space-y-4">
+                            <Label className="font-bold text-base">Permissions & Accessibility</Label>
+                            <div className="space-y-6 max-h-[400px] overflow-y-auto border rounded-2xl p-6 bg-slate-50/50">
+                                {PERMISSION_GROUPS.map((group) => (
+                                    <div key={group.name} className="space-y-3">
+                                        <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-primary/60 border-b border-primary/10 pb-1">{group.name}</h4>
+                                        <div className="grid grid-cols-1 gap-2">
+                                            {group.permissions.map((perm) => (
+                                                <div key={perm.key} className="flex items-start gap-4 p-3 hover:bg-white rounded-xl transition-all border border-transparent hover:border-slate-100 hover:shadow-sm">
+                                                    <Checkbox
+                                                        id={perm.key}
+                                                        checked={!!formData.permissions[perm.key]}
+                                                        onCheckedChange={() => togglePermission(perm.key)}
+                                                        className="mt-1"
+                                                    />
+                                                    <div className="flex-1">
+                                                        <Label htmlFor={perm.key} className="font-bold cursor-pointer text-slate-700 block text-sm">
+                                                            {perm.label}
+                                                        </Label>
+                                                        <p className="text-[10px] text-slate-400 font-medium leading-relaxed">{perm.description}</p>
+                                                    </div>
+                                                </div>
+                                            ))}
                                         </div>
                                     </div>
                                 ))}

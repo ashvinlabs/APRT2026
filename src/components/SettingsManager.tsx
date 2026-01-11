@@ -390,12 +390,12 @@ export default function SettingsManager() {
                                 "px-4 py-1.5 rounded-full font-black uppercase text-[10px] tracking-widest border-2 mb-2",
                                 config.is_voting_open ? "bg-emerald-50 text-emerald-600 border-emerald-100" : "bg-rose-50 text-rose-600 border-rose-100"
                             )}>
-                                Status: {config.is_voting_open ? 'Terbuka' : 'Tertutup'}
+                                Status: {config.is_voting_open ? 'Pemilihan Berjalan (Tally Terkunci)' : 'Tally Dibuka (Pemilihan Selesai)'}
                             </Badge>
                             <p className="text-xs text-slate-400 font-medium max-w-[200px]">
                                 {config.is_voting_open
-                                    ? 'Panitia dapat menginput suara di halaman Hitung Suara.'
-                                    : 'Semua tombol input suara akan dinonaktifkan di sistem.'}
+                                    ? 'Proses pemilihan sedang berlangsung. Input suara di halaman Tally dikunci.'
+                                    : 'Halaman Tally dibuka. Panitia dapat mulai menghitung surat suara.'}
                             </p>
                         </div>
 
