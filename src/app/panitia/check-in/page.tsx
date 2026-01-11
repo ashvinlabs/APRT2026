@@ -12,7 +12,6 @@ import { Lock } from 'lucide-react';
 interface Voter {
     id: string;
     name: string;
-    nik: string;
     address: string;
     is_present: boolean;
 }
@@ -231,7 +230,6 @@ export default function CheckInInterface() {
                                                         <span className="font-bold text-slate-900">{result.voter.name}</span>
                                                     </div>
                                                     <div className="text-sm text-slate-600">
-                                                        <p>NIK: {result.voter.nik}</p>
                                                         <p>Alamat: {result.voter.address}</p>
                                                     </div>
                                                 </div>

@@ -7,11 +7,11 @@ import { Printer, Search, Loader2 } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { cn } from '@/lib/utils';
 
 interface Voter {
   id: string;
   name: string;
-  nik: string;
   address: string;
   invitation_code: string;
 }
@@ -20,9 +20,13 @@ function InvitationContent() {
   const searchParams = useSearchParams();
   const [voters, setVoters] = useState<Voter[]>([]);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState(searchParams.get('nik') || '');
+  const [search, setSearch] = useState(searchParams.get('code') || '');
   const [mounted, setMounted] = useState(false);
   const [config, setConfig] = useState<any>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [currentPage, setCurrentPage] = useState(1);
+  const [printMode, setPrintMode] = useState<'selected' | 'page'>('selected');
+  const [itemsPerPage, setItemsPerPage] = useState(24);
 
   useEffect(() => {
     setMounted(true);
@@ -39,11 +43,13 @@ function InvitationContent() {
     setLoading(true);
     const { data, error } = await supabase
       .from('voters')
-      .select('id, name, nik, address, invitation_code')
+      .select('id, name, address, invitation_code')
       .order('name', { ascending: true });
 
     if (!error) {
       setVoters(data || []);
+      // Initially select all filtered voters or just all of them
+      setSelectedIds(new Set((data || []).map(v => v.id)));
     }
     setLoading(false);
   }
@@ -51,12 +57,41 @@ function InvitationContent() {
   const filteredVoters = voters.filter(v =>
     v.name.toLowerCase().includes(search.toLowerCase()) ||
     v.invitation_code?.toLowerCase().includes(search.toLowerCase()) ||
-    v.nik?.toLowerCase().includes(search.toLowerCase()) ||
     v.address?.toLowerCase().includes(search.toLowerCase())
   );
 
-  const handlePrint = () => {
-    window.print();
+  const handlePrint = (mode: 'selected' | 'page') => {
+    setPrintMode(mode);
+    setTimeout(() => {
+      window.print();
+    }, 100);
+  };
+
+  // Reset to page 1 on search or itemsPerPage change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, itemsPerPage]);
+
+  const totalPages = Math.ceil(filteredVoters.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedVoters = filteredVoters.slice(startIndex, startIndex + itemsPerPage);
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === filteredVoters.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(filteredVoters.map(v => v.id)));
+    }
+  };
+
+  const toggleSelect = (id: string) => {
+    const newSelected = new Set(selectedIds);
+    if (newSelected.has(id)) {
+      newSelected.delete(id);
+    } else {
+      newSelected.add(id);
+    }
+    setSelectedIds(newSelected);
   };
 
   const getInvitationDate = () => {
@@ -79,15 +114,30 @@ function InvitationContent() {
       <header className="no-print mb-8 flex flex-col md:flex-row justify-between items-center gap-6 pb-8 border-b border-slate-200">
         <div>
           <h1 className="text-4xl font-black text-slate-900 tracking-tight">Cetak <span className="text-primary">Undangan</span></h1>
-          <p className="text-slate-500 font-medium mt-1">Generate format A4 (3 per halaman) untuk undangan resmi.</p>
+          <p className="text-slate-500 font-medium mt-1">Generate format A4 (2 per halaman) untuk undangan resmi.</p>
         </div>
         <div className="flex gap-3">
+          <Button variant="outline" onClick={toggleSelectAll} className="rounded-2xl h-14 px-8 font-black no-print">
+            {selectedIds.size === filteredVoters.length ? 'Batal Pilih Semua' : 'Pilih Semua'}
+          </Button>
           <Button variant="outline" onClick={() => window.history.back()} className="rounded-2xl h-14 px-8 font-black">
             Kembali
           </Button>
-          <Button onClick={handlePrint} className="rounded-2xl h-14 px-8 font-black gap-2 shadow-xl shadow-primary/20 hover:scale-105 transition-all">
+          <Button
+            onClick={() => handlePrint('selected')}
+            disabled={selectedIds.size === 0}
+            className="rounded-2xl h-14 px-8 font-black gap-2 shadow-xl shadow-primary/20 hover:scale-105 transition-all"
+          >
             <Printer size={20} />
-            Cetak {filteredVoters.length} Undangan
+            Cetak {selectedIds.size} Terpilih
+          </Button>
+          <Button
+            onClick={() => handlePrint('page')}
+            variant="outline"
+            className="rounded-2xl h-14 px-8 font-black gap-2 border-primary text-primary hover:bg-primary/5"
+          >
+            <Printer size={20} />
+            Cetak Hal. {currentPage}
           </Button>
         </div>
       </header>
@@ -97,7 +147,7 @@ function InvitationContent() {
         <div className="relative flex items-center group">
           <Search className="absolute left-6 text-slate-400 group-focus-within:text-primary transition-colors" size={24} />
           <Input
-            placeholder="Cari nama atau NIK warga untuk dicetak..."
+            placeholder="Cari nama atau kode undangan untuk dicetak..."
             className="pl-16 h-18 text-xl font-bold rounded-[1.5rem] border-none bg-white shadow-xl shadow-slate-200/40 focus-visible:ring-primary/20"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -114,34 +164,134 @@ function InvitationContent() {
         <>
           {/* Screen-only Preview List (Modern UI) */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 no-print">
-            {filteredVoters.map((voter) => (
-              <div key={voter.id} className="bg-white rounded-[2rem] p-6 shadow-xl shadow-slate-200/50 border border-slate-100 flex flex-col gap-4 group hover:scale-[1.02] transition-all">
-                <div className="flex justify-between items-start gap-4">
+            {paginatedVoters.map((voter) => (
+              <div
+                key={voter.id}
+                onClick={() => toggleSelect(voter.id)}
+                className={cn(
+                  "bg-white rounded-[2rem] p-6 shadow-xl shadow-slate-200/50 border flex flex-col gap-4 group hover:scale-[1.02] transition-all cursor-pointer relative",
+                  selectedIds.has(voter.id) ? "border-primary ring-2 ring-primary/20" : "border-slate-100"
+                )}
+              >
+                {/* Checkbox Overlay */}
+                <div className={cn(
+                  "absolute top-6 right-6 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all",
+                  selectedIds.has(voter.id) ? "bg-primary border-primary" : "border-slate-200 bg-white"
+                )}>
+                  {selectedIds.has(voter.id) && <div className="w-2 h-2 bg-white rounded-full" />}
+                </div>
+
+                <div className="flex justify-between items-start gap-4 mr-8">
                   <div className="space-y-1">
                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Warga Terdaftar</p>
                     <h3 className="text-xl font-black text-slate-900 leading-tight">{voter.name}</h3>
-                    <p className="text-sm font-mono text-slate-500">{voter.nik || 'No NIK'}</p>
                     <p className="text-xs text-slate-400 italic mt-2">{voter.address || 'Alamat tidak tersedia'}</p>
                   </div>
-                  <div className="p-3 bg-slate-50 rounded-2xl border border-slate-100 group-hover:border-primary/20 transition-colors">
-                    <QRCodeSVG value={voter.invitation_code} size={64} level="M" />
+                  <div className="flex flex-col items-center gap-2">
+                    <div className="p-3 bg-slate-50 rounded-2xl border border-slate-100 group-hover:border-primary/20 transition-colors">
+                      <QRCodeSVG value={voter.invitation_code} size={64} level="M" />
+                    </div>
+                    <span className="text-[10px] font-mono font-black text-primary uppercase tracking-tighter">
+                      {voter.invitation_code}
+                    </span>
                   </div>
                 </div>
                 <div className="mt-auto pt-4 border-t border-slate-50 flex justify-between items-center">
                   <span className="text-[10px] font-bold px-2 py-1 bg-primary/10 text-primary rounded-lg uppercase tracking-tight">
                     {voter.invitation_code}
                   </span>
-                  <Button variant="ghost" size="sm" onClick={() => { setSearch(voter.nik); setTimeout(window.print, 100); }} className="text-primary font-black hover:bg-primary/5 rounded-xl">
-                    Cetak Kertas Ini
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedIds(new Set([voter.id]));
+                      setTimeout(window.print, 100);
+                    }}
+                    className="text-primary font-black hover:bg-primary/5 rounded-xl"
+                  >
+                    Cetak Saja
                   </Button>
                 </div>
               </div>
             ))}
           </div>
 
+          {/* Pagination Controls */}
+          {!loading && filteredVoters.length > 0 && (
+            <div className="mt-12 mb-20 py-8 border-t border-slate-200 no-print flex flex-col md:flex-row items-center justify-between gap-6">
+              <div className="flex flex-col md:flex-row items-center gap-4 md:gap-8">
+                <p className="text-slate-500 font-bold text-sm">
+                  Menampilkan <span className="text-slate-900">{startIndex + 1}</span> - <span className="text-slate-900">{Math.min(startIndex + itemsPerPage, filteredVoters.length)}</span> dari <span className="text-slate-900">{filteredVoters.length}</span> warga
+                </p>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-black uppercase text-slate-400">Items:</span>
+                  {[12, 24, 48, 96].map(num => (
+                    <button
+                      key={num}
+                      onClick={() => setItemsPerPage(num)}
+                      className={cn(
+                        "w-8 h-8 rounded-lg text-xs font-black transition-all",
+                        itemsPerPage === num
+                          ? "bg-slate-900 text-white shadow-lg"
+                          : "bg-slate-100 text-slate-400 hover:bg-slate-200"
+                      )}
+                    >
+                      {num}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {totalPages > 1 && (
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    disabled={currentPage === 1}
+                    onClick={() => setCurrentPage(prev => prev - 1)}
+                    className="rounded-xl h-10 px-4 font-bold"
+                  >
+                    Sebelumnya
+                  </Button>
+                  <div className="flex items-center gap-1">
+                    {[...Array(totalPages)].map((_, i) => {
+                      const pageNum = i + 1;
+                      if (pageNum === 1 || pageNum === totalPages || (pageNum >= currentPage - 1 && pageNum <= currentPage + 1)) {
+                        return (
+                          <Button
+                            key={pageNum}
+                            variant={currentPage === pageNum ? "default" : "ghost"}
+                            size="sm"
+                            onClick={() => setCurrentPage(pageNum)}
+                            className={cn("w-10 h-10 rounded-xl font-black", currentPage === pageNum && "shadow-lg shadow-primary/20")}
+                          >
+                            {pageNum}
+                          </Button>
+                        );
+                      }
+                      if (pageNum === currentPage - 2 || pageNum === currentPage + 2) return <span key={pageNum} className="text-slate-300">...</span>;
+                      return null;
+                    })}
+                  </div>
+                  <Button
+                    variant="outline"
+                    disabled={currentPage === totalPages}
+                    onClick={() => setCurrentPage(prev => prev + 1)}
+                    className="rounded-xl h-10 px-4 font-bold"
+                  >
+                    Selanjutnya
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Print-only Formal Layout */}
           <div className="print-area hidden-on-screen">
-            {filteredVoters.map((voter) => (
+            {(printMode === 'selected'
+              ? filteredVoters.filter(v => selectedIds.has(v.id))
+              : paginatedVoters
+            ).map((voter) => (
               <div key={voter.id} className="invitation-page-segment">
                 <div className="formal-invitation">
                   {/* Header Section */}
@@ -169,7 +319,7 @@ function InvitationContent() {
                       </div>
                       <div className="detail-row">
                         <div className="detail-label">Waktu</div>
-                        <div className="detail-value">: Jam {config?.start_time || '08:00'} - {config?.end_time || '11:00'} WIB</div>
+                        <div className="detail-value">: Jam {config?.start_time || '08:00'} - selesai</div>
                       </div>
                     </div>
 
@@ -182,8 +332,8 @@ function InvitationContent() {
                             <span className="v-val">: <strong>{voter.name}</strong></span>
                           </div>
                           <div className="voter-data-row">
-                            <span className="v-label">NIK</span>
-                            <span className="v-val">: {voter.nik || '-'}</span>
+                            <span className="v-label">ID Reg</span>
+                            <span className="v-val">: {voter.invitation_code}</span>
                           </div>
                           <div className="voter-data-row">
                             <span className="v-label">Alamat</span>
@@ -192,7 +342,7 @@ function InvitationContent() {
                         </div>
                       </div>
                       <div className="qr-container">
-                        <QRCodeSVG value={voter.invitation_code} size={110} level="M" includeMargin={false} />
+                        <QRCodeSVG value={voter.invitation_code} size={90} level="M" includeMargin={false} />
                         <p className="qr-code-text">{voter.invitation_code}</p>
                       </div>
                     </div>
@@ -246,25 +396,25 @@ function InvitationContent() {
 
         .header-section {
           text-align: center;
-          margin-bottom: 0.75rem;
+          margin-bottom: 0.4rem;
         }
 
         .institution {
-          font-size: 10pt;
+          font-size: 9pt;
           margin: 0;
           text-transform: uppercase;
           letter-spacing: 0.05em;
         }
 
         .main-title {
-          font-size: 15pt;
+          font-size: 14pt;
           font-weight: 900;
-          margin: 2px 0;
+          margin: 1px 0;
           line-height: 1.1;
         }
 
         .location-context {
-          font-size: 11pt;
+          font-size: 10pt;
           margin: 0;
           font-weight: bold;
         }
@@ -278,11 +428,11 @@ function InvitationContent() {
         }
 
         .body-section {
-          font-size: 11pt;
+          font-size: 10pt;
         }
 
         .opening {
-          margin: 0.5rem 0;
+          margin: 0.3rem 0;
         }
 
         .details-table {
@@ -301,17 +451,17 @@ function InvitationContent() {
 
         .voter-box {
           border: 1px solid black;
-          padding: 0.5cm;
+          padding: 0.3cm;
           display: flex;
           justify-content: space-between;
           align-items: center;
           background: #fff;
-          margin: 0.75rem 0;
+          margin: 0.4rem 0;
         }
 
         .target-label {
-          font-size: 10pt;
-          margin: 0 0 0.5rem 0;
+          font-size: 9pt;
+          margin: 0 0 0.3rem 0;
           font-weight: bold;
           text-decoration: underline;
         }
@@ -319,12 +469,12 @@ function InvitationContent() {
         .voter-data-grid {
             display: flex;
             flex-direction: column;
-            gap: 2px;
+            gap: 1px;
         }
 
         .voter-data-row {
             display: flex;
-            font-size: 11pt;
+            font-size: 10pt;
         }
 
         .v-label {
@@ -333,28 +483,28 @@ function InvitationContent() {
 
         .qr-container {
           text-align: center;
-          padding-left: 1rem;
+          padding-left: 0.5rem;
         }
 
         .qr-code-text {
           font-family: monospace;
-          font-size: 9pt;
+          font-size: 8pt;
           font-weight: bold;
-          margin: 4px 0 0 0;
+          margin: 2px 0 0 0;
         }
 
         .instruction {
-          font-size: 9pt;
+          font-size: 8.5pt;
           text-align: justify;
-          line-height: 1.25;
-          margin: 0.5rem 0;
+          line-height: 1.2;
+          margin: 0.3rem 0;
         }
 
         .footer-section {
           display: flex;
           justify-content: space-between;
           align-items: flex-end;
-          margin-top: 1rem;
+          margin-top: 0.5rem;
         }
 
         .closing p {
@@ -373,7 +523,7 @@ function InvitationContent() {
         }
 
         .regards {
-          margin-bottom: 2.2rem !important;
+          margin-bottom: 1.5rem !important;
         }
 
         .committee-box {
@@ -386,8 +536,25 @@ function InvitationContent() {
         }
 
         @media print {
+          html, body {
+            margin: 0 !important;
+            padding: 0 !important;
+            height: auto !important;
+            background: white !important;
+          }
+          
+          .no-print-bg {
+            padding: 0 !important;
+            margin: 0 !important;
+            background: white !important;
+            min-height: 0 !important;
+          }
+
           .no-print {
             display: none !important;
+            height: 0 !important;
+            margin: 0 !important;
+            padding: 0 !important;
           }
           
           @page {
@@ -395,38 +562,55 @@ function InvitationContent() {
             margin: 0;
           }
 
-          body {
-            margin: 0;
-            background: white !important;
+          .print-area {
+            display: block !important;
+            margin: 0 !important;
+            padding: 0 !important;
           }
 
           .invitation-page-segment {
-            height: 9.9cm; /* 29.7cm / 3 = 9.9cm per invitation */
+            height: 14.2cm; /* Even more conservative height to fit 2 per page including browser headers */
             width: 21cm;
-            padding: 0.6cm 1.2cm;
+            padding: 0.3cm 1.5cm;
             box-sizing: border-box;
-            border: 2px solid #333; /* Solid border around each invitation */
             page-break-inside: avoid;
             background: white !important;
             margin: 0 !important;
             border-radius: 0 !important;
             box-shadow: none !important;
-            display: block;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
             position: relative;
+            overflow: hidden;
+            border-bottom: 1px dashed #eee; /* Light guide for cutting */
           }
 
-          .invitation-page-segment:nth-child(3n) {
-            page-break-after: always; /* New page after every 3 invitations */
+          /* Cut line indicator between invitations */
+          .invitation-page-segment:not(:nth-child(2n))::after {
+            content: "";
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            border-bottom: 1px dashed #ccc;
           }
 
-          .voter-box {
-            background: transparent !important;
+          /* Explicitly force page break after every 2nd item */
+          .invitation-page-segment:nth-child(2n) {
+            page-break-after: always;
+            border-bottom: none;
           }
 
           .formal-invitation {
-            height: 100%;
+            border: 2px solid black;
+            padding: 0.6cm 0.8cm;
+            height: 13.2cm; /* Fixed height for active content area */
             display: flex;
             flex-direction: column;
+            justify-content: space-between;
+            box-sizing: border-box;
+            margin: 0 auto;
           }
         }
       `}</style>

@@ -1,12 +1,17 @@
 'use client';
 
 import { Card, CardContent } from '@/components/ui/card';
-import { CheckCircle2, Users, QrCode, BarChart3, Shield, Smartphone } from 'lucide-react';
+import { CheckCircle2, Users, QrCode, BarChart3, Shield, Smartphone, ArrowLeft } from 'lucide-react';
+import Link from 'next/link';
+import { Button } from '@/components/ui/button';
+import PublicNavbar from '@/components/PublicNavbar';
 
 export default function AboutPage() {
     return (
-        <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
-            <div className="px-2 py-8 md:p-8 max-w-5xl mx-auto">
+        <div className="min-h-screen bg-slate-50">
+            <PublicNavbar />
+
+            <div className="px-2 pt-28 pb-8 md:p-8 md:pt-32 max-w-5xl mx-auto">
                 {/* Header */}
                 <header className="text-center mb-12">
                     <div className="inline-block px-6 py-2 bg-primary/10 rounded-full mb-4">

@@ -22,6 +22,8 @@ interface AuditLog {
     created_at: string;
     voters: { name: string } | null;
     staff_id: string;
+    permission_group: string;
+    metadata: any;
 }
 
 // Target UI logic: We need to handle the staff name display. 
@@ -47,6 +49,8 @@ export default function StaffActivity() {
                 action, 
                 created_at,
                 staff_id,
+                permission_group,
+                metadata,
                 voters(name)
             `)
             .order('created_at', { ascending: false })
@@ -136,14 +140,21 @@ export default function StaffActivity() {
                                             </div>
                                         </TableCell>
                                         <TableCell>
-                                            <Badge className={cn(
-                                                "px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border-none shadow-sm",
-                                                log.action === 'check-in'
-                                                    ? "bg-emerald-100 text-emerald-700"
-                                                    : "bg-rose-100 text-rose-700"
-                                            )}>
-                                                {log.action === 'check-in' ? 'Check-in Berhasil' : 'Pembatalan Hadir'}
-                                            </Badge>
+                                            <div className="flex flex-col gap-1">
+                                                <Badge className={cn(
+                                                    "w-fit px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border-none shadow-sm",
+                                                    log.action === 'check-in' || log.action === 'add_voter' || log.action === 'approve_staff'
+                                                        ? "bg-emerald-100 text-emerald-700"
+                                                        : log.action === 'undo_vote' || log.action === 'reject_staff' || log.action === 'delete_voter'
+                                                            ? "bg-rose-100 text-rose-700"
+                                                            : "bg-blue-100 text-blue-700"
+                                                )}>
+                                                    {log.action.replace(/_/g, ' ')}
+                                                </Badge>
+                                                <span className="text-[9px] font-bold text-slate-400 pl-1 uppercase tracking-tighter">
+                                                    Area: {log.permission_group?.replace(/_/g, ' ') || 'General'}
+                                                </span>
+                                            </div>
                                         </TableCell>
                                         <TableCell>
                                             <div className="flex items-center gap-3">

@@ -113,42 +113,68 @@ export default function GoogleSyncModal({ voters: initialVoters, onClose }: Goog
         try {
             // 1. Pull Data from Sheets
             setSyncProgress('Menarik data dari Sheets...');
-            const response = await fetch(webhookUrl + '?action=get_voters');
+            const joinChar = webhookUrl.includes('?') ? '&' : '?';
+            const response = await fetch(webhookUrl + joinChar + 'action=get_voters');
             const sheetData = await response.json();
 
-            if (!Array.isArray(sheetData)) throw new Error('Format data Google Sheets tidak valid.');
+            setSyncProgress(`Ditemukan ${sheetData.length} baris di Sheets. Mencocokkan...`);
+            console.log('Sync debug: sheetData', sheetData);
 
             // 2. Fetch current App Data
-            setSyncProgress('Mencocokkan identitas (NIK)...');
             const { data: dbVoters, error: fetchError } = await supabase
                 .from('voters')
                 .select('*');
 
             if (fetchError) throw fetchError;
+            console.log('Sync debug: dbVoters', dbVoters);
 
             // 3. Merge Logic & Conflict Resolution
             const finalVotersToUpsert: any[] = [];
-            const sheetNiks = new Set();
+            const sheetCodes = new Set();
 
             // A. Process Sheet Data (Updates & New from Sheet)
-            sheetData.forEach((row, index) => {
-                const nik = row.nik?.toString().trim();
-                if (!nik) return;
+            sheetData.forEach((row: any, index: number) => {
+                const name = row.name || row.nama || row.Nama || '';
+                const address = row.address || row.alamat || row.Alamat || '';
+                const code = row.invitation_code?.toString().trim();
 
-                sheetNiks.add(nik);
-                const dbMatch = dbVoters.find(v => v.nik?.toString().trim() === nik);
+                // Use synonym or generate deterministic code if missing
+                let actualCode = code || row.kode || row.code;
+
+                if (!actualCode && name && address) {
+                    const hashInput = (name + address).toLowerCase().replace(/\s/g, '');
+                    let hash = 0;
+                    for (let i = 0; i < hashInput.length; i++) {
+                        hash = ((hash << 5) - hash) + hashInput.charCodeAt(i);
+                        hash |= 0;
+                    }
+                    actualCode = Math.abs(hash).toString(36).substring(0, 6).toUpperCase();
+                    console.log(`Sync: Calculated code ${actualCode} for ${name}`);
+                }
+
+                if (!actualCode) {
+                    console.warn(`Sync warning: Row ${index + 2} missing Kode and identity`, row);
+                    return;
+                }
+
+                sheetCodes.add(actualCode.toString());
+                // Match by invitation_code if possible, otherwise by name + address
+                const dbMatch = dbVoters.find(v =>
+                    (actualCode && v.invitation_code?.toString().trim() === actualCode.toString()) ||
+                    (v.name.toLowerCase() === name.toLowerCase() &&
+                        v.address.toLowerCase() === address.toLowerCase())
+                );
 
                 const dbUpdatedAt = dbMatch?.updated_at ? new Date(dbMatch.updated_at).getTime() : 0;
-                const sheetLastSync = row.last_sync ? new Date(row.last_sync).getTime() : 0;
+                const sheetLastSync = row.last_sync ? (isNaN(new Date(row.last_sync).getTime()) ? 0 : new Date(row.last_sync).getTime()) : 0;
 
                 // App Wins if it was updated AFTER the last time it was synced to Sheets
                 const appWins = dbMatch && dbUpdatedAt > sheetLastSync;
 
                 finalVotersToUpsert.push({
-                    name: appWins ? dbMatch.name : (row.name || row.nama),
-                    nik: nik,
-                    address: appWins ? dbMatch.address : (row.address || row.alamat || ''),
-                    invitation_code: dbMatch?.invitation_code || row.invitation_code || row.kode || Math.random().toString(36).substring(2, 8).toUpperCase(),
+                    name: appWins ? dbMatch.name : (row.name || row.nama || row.Nama || 'Tanpa Nama'),
+                    address: appWins ? dbMatch.address : (row.address || row.alamat || row.Alamat || ''),
+                    invitation_code: actualCode,
                     is_present: appWins ? dbMatch.is_present : (row.is_present ?? dbMatch?.is_present ?? false),
                     display_order: index + 1
                 });
@@ -157,10 +183,9 @@ export default function GoogleSyncModal({ voters: initialVoters, onClose }: Goog
             // B. Handle App-Only Records (New Records from App)
             // We MUST include records that are in DB but NOT in Sheet so they get pushed to Sheet.
             dbVoters.forEach(v => {
-                if (v.nik && !sheetNiks.has(v.nik.toString().trim())) {
+                if (v.invitation_code && !sheetCodes.has(v.invitation_code.toString().trim())) {
                     finalVotersToUpsert.push({
                         name: v.name,
-                        nik: v.nik,
                         address: v.address,
                         invitation_code: v.invitation_code,
                         is_present: v.is_present,
@@ -169,16 +194,19 @@ export default function GoogleSyncModal({ voters: initialVoters, onClose }: Goog
                 }
             });
 
-            // 4. Database Batch Sync
-            setSyncProgress('Memperbarui database aplikasi...');
+            if (finalVotersToUpsert.length === 0) {
+                throw new Error("Tidak ada data valid yang ditemukan di file Google Sheets. Pastikan kolom 'Kode' sudah terisi.");
+            }
+
+            setSyncProgress(`Menyinkron ${finalVotersToUpsert.length} data ke aplikasi...`);
             const { error: upsertError } = await supabase.from('voters').upsert(finalVotersToUpsert, {
-                onConflict: 'nik'
+                onConflict: 'invitation_code'
             });
 
             if (upsertError) throw upsertError;
 
             // 5. Final Push Back to Sheets (Guaranteed Parity)
-            setSyncProgress('Sinkronisasi balik ke Sheets...');
+            setSyncProgress('Memberi tanda pada Sheets...');
             const { data: updatedVoters } = await supabase.from('voters').select('*').order('display_order', { ascending: true });
 
             const now = new Date().toISOString();
@@ -191,7 +219,6 @@ export default function GoogleSyncModal({ voters: initialVoters, onClose }: Goog
                     timestamp: now,
                     data: (updatedVoters || []).map(v => ({
                         nama: v.name,
-                        nik: v.nik,
                         alamat: v.address,
                         kode: v.invitation_code,
                         status: v.is_present ? 'Hadir' : 'Belum Hadir'
@@ -212,23 +239,37 @@ export default function GoogleSyncModal({ voters: initialVoters, onClose }: Goog
 
     const appsScriptCode = `function doGet(e) {
   const action = e.parameter.action;
+  const env = e.parameter.env || 'Production';
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheets = ss.getSheets();
+  const targetName = (e.parameter.env || 'Production').toLowerCase();
+  let sheet = sheets.find(s => s.getName().toLowerCase() === targetName);
+  
+  // Create sheet if it doesn't exist
+  if (!sheet) {
+    sheet = ss.insertSheet(e.parameter.env || 'Production');
+    sheet.getRange(1, 1, 1, 5).setValues([["Nama", "Alamat", "Kode", "Status", "Last Sync"]]);
+    sheet.getRange(1, 1, 1, 5).setFontWeight("bold");
+    sheet.setFrozenRows(1);
+  }
+
   if (action === 'get_voters') {
-    const sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
     const data = sheet.getDataRange().getValues();
-    const headers = data[0].map(h => h.toString().toLowerCase());
+    if (data.length <= 1) return ContentService.createTextOutput(JSON.stringify([])).setMimeType(ContentService.MimeType.JSON);
+    
+    const headers = data[0].map(h => h.toString().toLowerCase().trim());
     
     const json = data.slice(1).map(row => {
       let obj = {};
       headers.forEach((h, i) => {
         if (h === 'nama' || h === 'name') obj.name = row[i];
-        if (h === 'nik') obj.nik = row[i]?.toString() || '';
         if (h === 'alamat' || h === 'address') obj.address = row[i];
-        if (h === 'kode' || h === 'code') obj.invitation_code = row[i]?.toString() || '';
+        if (h === 'kode' || h === 'code' || h === 'id') obj.invitation_code = row[i]?.toString() || '';
         if (h === 'status') obj.is_present = (row[i]?.toString().toLowerCase() === 'hadir');
         if (h === 'last sync' || h === 'last_sync') obj.last_sync = row[i];
       });
       return obj;
-    }).filter(v => v.nik);
+    }).filter(v => v.name);
     
     return ContentService.createTextOutput(JSON.stringify(json)).setMimeType(ContentService.MimeType.JSON);
   }
@@ -236,16 +277,21 @@ export default function GoogleSyncModal({ voters: initialVoters, onClose }: Goog
 
 function doPost(e) {
   const contents = JSON.parse(e.postData.contents);
-  const sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+  const env = e.parameter.env || 'Production';
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(env) || ss.insertSheet(env);
   
   if (contents.action === 'sync_voters') {
     const rows = contents.data.map(v => [
-      v.nama, v.nik, v.alamat, v.kode, v.status, contents.timestamp
+      v.nama, v.alamat, v.kode, v.status, contents.timestamp
     ]);
     
-    sheet.getRange(1, 1, 1, 6).setValues([["Nama", "NIK", "Alamat", "Kode", "Status", "Last Sync"]]);
-    sheet.getRange(1, 1, 1, 6).setFontWeight("bold");
-    sheet.getRange(2, 1, rows.length, 6).setValues(rows);
+    sheet.clearContents(); // Clear to ensure fresh parity
+    sheet.getRange(1, 1, 1, 5).setValues([["Nama", "Alamat", "Kode", "Status", "Last Sync"]]);
+    sheet.getRange(1, 1, 1, 5).setFontWeight("bold");
+    if (rows.length > 0) {
+      sheet.getRange(2, 1, rows.length, 5).setValues(rows);
+    }
     
     return ContentService.createTextOutput("Success").setMimeType(ContentService.MimeType.TEXT);
   }
@@ -390,7 +436,7 @@ function doPost(e) {
                             <p className="text-sm text-slate-500 font-medium max-w-[280px] mt-1 relative z-10">
                                 {isSyncing
                                     ? syncProgress
-                                    : 'Aplikasi akan mencocokkan identitas (NIK) dan urutan baris agar tepat sama dengan Google Sheets Anda.'}
+                                    : 'Aplikasi akan mencocokkan identitas (Kode Undangan) dan urutan baris agar tepat sama dengan Google Sheets Anda.'}
                             </p>
                         </div>
 

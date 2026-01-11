@@ -31,11 +31,11 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { useUser } from './UserContext';
+import { logActivity } from '@/lib/logger';
 
 interface Voter {
     id: string;
     name: string;
-    nik: string;
     address: string;
     is_present: boolean;
     invitation_code: string;
@@ -52,9 +52,11 @@ export default function VoterManagement() {
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [isSyncModalOpen, setIsSyncModalOpen] = useState(false);
     const [mounted, setMounted] = useState(false);
-    const [newVoter, setNewVoter] = useState({ name: '', nik: '', address: '' });
+    const [newVoter, setNewVoter] = useState({ name: '', address: '' });
     const [editingVoter, setEditingVoter] = useState<Voter | null>(null);
     const [isRegistrationOpen, setIsRegistrationOpen] = useState(true);
+    const [currentPage, setCurrentPage] = useState(1);
+    const [itemsPerPage, setItemsPerPage] = useState(24);
 
     // Determine if user can see full data (for privacy masking)
     const canSeeFullData = user ? hasPermission('manage_voters') : false;
@@ -123,6 +125,7 @@ export default function VoterManagement() {
             alert('Gagal menghapus data: ' + error.message);
         } else {
             setVoters(voters.filter(v => v.id !== voterId));
+            await logActivity('delete_voter', 'manage_voters', { name });
         }
     }
 
@@ -140,17 +143,27 @@ export default function VoterManagement() {
             setVoters(voters.map(v => v.id === voterId ? { ...v, is_present: !currentStatus } : v));
 
             // Audit log
-            await supabase.from('audit_logs').insert({
-                action: !currentStatus ? 'check-in' : 'uncheck-in',
-                staff_id: user.id,
-                voter_id: voterId
-            });
+            await logActivity(
+                !currentStatus ? 'check-in' : 'uncheck-in',
+                'manage_voters',
+                { voter_name: voters.find(v => v.id === voterId)?.name },
+                voterId
+            );
         }
     }
 
     async function handleAddVoter(e: React.FormEvent) {
         e.preventDefault();
-        const code = Math.random().toString(36).substring(2, 8).toUpperCase();
+
+        // Generate deterministic code from name + address
+        const hashInput = (newVoter.name + newVoter.address).toLowerCase().replace(/\s/g, '');
+        let hash = 0;
+        for (let i = 0; i < hashInput.length; i++) {
+            hash = ((hash << 5) - hash) + hashInput.charCodeAt(i);
+            hash |= 0;
+        }
+        const code = Math.abs(hash).toString(36).substring(0, 6).toUpperCase();
+
         const { error } = await supabase.from('voters').insert([{
             ...newVoter,
             invitation_code: code
@@ -158,8 +171,9 @@ export default function VoterManagement() {
 
         if (!error) {
             setIsAddModalOpen(false);
-            setNewVoter({ name: '', nik: '', address: '' });
+            setNewVoter({ name: '', address: '' });
             fetchVoters();
+            await logActivity('add_voter', 'manage_voters', { name: newVoter.name });
         }
     }
 
@@ -181,16 +195,16 @@ export default function VoterManagement() {
             setIsEditModalOpen(false);
             setEditingVoter(null);
             fetchVoters();
+            await logActivity('update_voter', 'edit_voters', { name: editingVoter.name }, editingVoter.id);
         }
     }
 
     const exportToCSV = () => {
-        const headers = ['Nama', 'NIK', 'Alamat', 'Kode Undangan', 'Kehadiran', 'Waktu Hadir'];
+        const headers = ['Nama', 'Alamat', 'Kode Undangan', 'Kehadiran', 'Waktu Hadir'];
         const csvContent = [
             headers.join(','),
             ...voters.map(v => [
                 `"${v.name}"`,
-                `"${v.nik || ''}"`,
                 `"${v.address || ''}"`,
                 `"${v.invitation_code}"`,
                 v.is_present ? 'Hadir' : 'Belum Hadir',
@@ -207,20 +221,23 @@ export default function VoterManagement() {
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
-    };
-
-    const formatNIK = (nik: string | undefined) => {
-        if (!nik) return 'NIK tidak terdaftar';
-        if (canSeeFullData) return nik;
-        if (nik.length < 5) return '***';
-        return `${nik.slice(0, 3)}********${nik.slice(-2)}`;
+        logActivity('export_data', 'view_logs', { count: voters.length });
     };
 
     const filteredVoters = voters.filter(v =>
         v.name.toLowerCase().includes(search.toLowerCase()) ||
-        v.nik?.includes(search) ||
+        v.address?.toLowerCase().includes(search.toLowerCase()) ||
         v.invitation_code?.toLowerCase().includes(search.toLowerCase())
     );
+
+    // Reset to page 1 when search or itemsPerPage changes
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [search, itemsPerPage]);
+
+    const totalPages = Math.ceil(filteredVoters.length / itemsPerPage);
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const paginatedVoters = filteredVoters.slice(startIndex, startIndex + itemsPerPage);
 
     // Only wait for user loading if we're actually checking authentication
     // For public access, we can render immediately
@@ -276,7 +293,7 @@ export default function VoterManagement() {
                         <div className="relative flex items-center group">
                             <Search className="absolute left-3 md:left-4 text-slate-400 group-focus-within:text-primary transition-colors" size={20} />
                             <Input
-                                placeholder="Cari nama, NIK, atau kode undangan..."
+                                placeholder="Cari nama, alamat, atau kode undangan..."
                                 className="pl-10 md:pl-14 h-12 md:h-16 text-base md:text-lg font-medium border-none focus-visible:ring-0 bg-transparent placeholder:text-slate-300"
                                 value={search}
                                 onChange={(e) => setSearch(e.target.value)}
@@ -311,7 +328,7 @@ export default function VoterManagement() {
                         <p className="text-xl font-black text-slate-400 animate-pulse tracking-widest uppercase">Memuat Data Pemilih...</p>
                     </div>
                 ) : (
-                    filteredVoters.map(voter => (
+                    paginatedVoters.map(voter => (
                         <Card key={voter.id} className={cn(
                             "group border-none shadow-xl shadow-slate-200/30 rounded-3xl overflow-hidden transition-all duration-400 hover-premium bg-white ring-1 ring-slate-100",
                             voter.is_present && "ring-2 ring-emerald-500/10 shadow-emerald-100"
@@ -374,12 +391,6 @@ export default function VoterManagement() {
                                     </div>
 
                                     <div className="space-y-3 mb-8">
-                                        <div className="flex items-center gap-3 text-slate-500 text-sm font-bold">
-                                            <span className="w-8 h-8 rounded-lg bg-slate-50 flex items-center justify-center text-slate-400">
-                                                <Info size={14} />
-                                            </span>
-                                            <span className="font-mono tracking-tighter">{formatNIK(voter.nik)}</span>
-                                        </div>
                                         <div className="flex items-center gap-3 text-slate-400 text-xs font-bold italic">
                                             <span className="w-8 h-8 rounded-lg bg-slate-50 flex items-center justify-center text-slate-300">
                                                 <MapPin size={14} />
@@ -414,8 +425,8 @@ export default function VoterManagement() {
                                                 <Button
                                                     variant="secondary"
                                                     onClick={() => {
-                                                        // Set search to exactly this NIK and redirect
-                                                        router.push(`/panitia/invitations?nik=${voter.nik}`);
+                                                        // Redirect to invitations using the invitation code
+                                                        router.push(`/panitia/invitations?code=${voter.invitation_code}`);
                                                     }}
                                                     className={cn(
                                                         "rounded-2xl border-none bg-slate-50 text-slate-500 font-black text-xs uppercase tracking-widest h-12 hover:bg-primary/10 hover:text-primary transition-all",
@@ -450,6 +461,91 @@ export default function VoterManagement() {
                 )}
             </div>
 
+            {/* Pagination Controls */}
+            {!loading && filteredVoters.length > 0 && (
+                <div className="mt-12 flex flex-col md:flex-row items-center justify-between gap-6 pb-20">
+                    <div className="flex flex-col md:flex-row items-center gap-4 md:gap-8">
+                        <p className="text-slate-500 font-bold text-sm">
+                            Menampilkan <span className="text-slate-900">{startIndex + 1}</span> - <span className="text-slate-900">{Math.min(startIndex + itemsPerPage, filteredVoters.length)}</span> dari <span className="text-slate-900">{filteredVoters.length}</span> warga
+                        </p>
+
+                        <div className="flex items-center gap-2">
+                            <span className="text-[10px] font-black uppercase text-slate-400">Per Hal:</span>
+                            {[12, 24, 48, 96].map(num => (
+                                <button
+                                    key={num}
+                                    onClick={() => { setItemsPerPage(num); setCurrentPage(1); }}
+                                    className={cn(
+                                        "w-8 h-8 rounded-lg text-xs font-black transition-all",
+                                        itemsPerPage === num
+                                            ? "bg-slate-900 text-white shadow-lg"
+                                            : "bg-slate-100 text-slate-400 hover:bg-slate-200"
+                                    )}
+                                >
+                                    {num}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    {totalPages > 1 && (
+                        <div className="flex items-center gap-2">
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                disabled={currentPage === 1}
+                                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                                className="rounded-xl h-10 px-4 font-bold border-slate-200"
+                            >
+                                Sebelumnya
+                            </Button>
+
+                            <div className="flex items-center gap-1">
+                                {[...Array(totalPages)].map((_, i) => {
+                                    const pageNum = i + 1;
+                                    if (
+                                        pageNum === 1 ||
+                                        pageNum === totalPages ||
+                                        (pageNum >= currentPage - 1 && pageNum <= currentPage + 1)
+                                    ) {
+                                        return (
+                                            <Button
+                                                key={pageNum}
+                                                variant={currentPage === pageNum ? "default" : "ghost"}
+                                                size="sm"
+                                                onClick={() => setCurrentPage(pageNum)}
+                                                className={cn(
+                                                    "w-10 h-10 rounded-xl font-black",
+                                                    currentPage === pageNum ? "shadow-lg shadow-primary/20" : "text-slate-400"
+                                                )}
+                                            >
+                                                {pageNum}
+                                            </Button>
+                                        );
+                                    } else if (
+                                        pageNum === currentPage - 2 ||
+                                        pageNum === currentPage + 2
+                                    ) {
+                                        return <span key={pageNum} className="text-slate-300">...</span>;
+                                    }
+                                    return null;
+                                })}
+                            </div>
+
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                disabled={currentPage === totalPages}
+                                onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                                className="rounded-xl h-10 px-4 font-bold border-slate-200"
+                            >
+                                Selanjutnya
+                            </Button>
+                        </div>
+                    )}
+                </div>
+            )}
+
             {/* Modals */}
             {isImportModalOpen && (
                 <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
@@ -478,17 +574,6 @@ export default function VoterManagement() {
                                     value={editingVoter.name}
                                     onChange={e => setEditingVoter({ ...editingVoter, name: e.target.value })}
                                 />
-                            </div>
-                            <div className="space-y-2 opacity-60">
-                                <p className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                                    NIK (Terkunci) <Info size={12} />
-                                </p>
-                                <Input
-                                    disabled
-                                    className="h-14 rounded-2xl bg-slate-100 border-slate-200 font-bold text-lg cursor-not-allowed"
-                                    value={editingVoter.nik}
-                                />
-                                <p className="text-[10px] text-slate-400 italic">Untuk mengubah NIK, silakan hapus dan tambah ulang warga.</p>
                             </div>
                             <div className="space-y-2">
                                 <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Alamat Lengkap</p>
@@ -529,16 +614,6 @@ export default function VoterManagement() {
                                     className="h-14 rounded-2xl bg-slate-50 border-slate-200 font-bold text-lg focus-visible:ring-primary/20"
                                     value={newVoter.name}
                                     onChange={e => setNewVoter({ ...newVoter, name: e.target.value })}
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Nomor Induk Kependudukan (NIK)</p>
-                                <Input
-                                    required
-                                    placeholder="16 digit angka"
-                                    className="h-14 rounded-2xl bg-slate-50 border-slate-200 font-bold text-lg focus-visible:ring-primary/20"
-                                    value={newVoter.nik}
-                                    onChange={e => setNewVoter({ ...newVoter, nik: e.target.value })}
                                 />
                             </div>
                             <div className="space-y-2">

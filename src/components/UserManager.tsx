@@ -20,6 +20,7 @@ import {
     Camera,
     User
 } from 'lucide-react';
+import { logActivity } from '@/lib/logger';
 import ImageCropModal from './ImageCropModal';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
@@ -169,6 +170,7 @@ export default function UserManager() {
             alert('Gagal mengubah status: ' + error.message);
         } else {
             await fetchData();
+            await logActivity(!member.is_approved ? 'approve_staff' : 'reject_staff', 'manage_staff', { staff_name: member.name });
         }
         setUpdating(null);
     }
@@ -188,6 +190,7 @@ export default function UserManager() {
         // Refresh specific member
         const updatedRes = await fetchStaff();
         setStaff(updatedRes);
+        await logActivity('manage_roles', 'manage_roles', { staff_name: member.name, role_id: roleId });
         setUpdating(null);
     }
 
@@ -205,6 +208,7 @@ export default function UserManager() {
 
         if (!error) {
             setStaff(prev => prev.filter(s => s.id !== member.id));
+            await logActivity('delete_voter', 'manage_staff', { staff_name: member.name });
         }
         setUpdating(member.id);
     }

@@ -110,7 +110,9 @@ export default function LiveDashboard() {
         setStats({
             total_voters: totalVoters || 0,
             present_voters: presentVoters || 0,
-            votes: Object.entries(voteCounts).map(([id, count]) => ({ candidate_id: id, count })),
+            votes: Object.entries(voteCounts)
+                .map(([id, count]) => ({ candidate_id: id, count }))
+                .sort((a, b) => b.count - a.count), // Sort by count descending
             total_valid_votes: valid,
             total_invalid_votes: invalid,
             config: configData?.value || {
@@ -215,67 +217,74 @@ export default function LiveDashboard() {
 
             {/* Candidate Results Grid */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
-                {candidates.map((candidate, idx) => {
-                    const voteCount = stats?.votes.find(v => v.candidate_id === candidate.id)?.count || 0;
-                    const percentage = stats?.total_valid_votes ? Math.round((voteCount / stats.total_valid_votes) * 100) : 0;
-                    const colors = [
-                        'from-blue-500 to-indigo-600 shadow-blue-200/50',
-                        'from-purple-500 to-fuchsia-600 shadow-purple-200/50',
-                        'from-emerald-500 to-teal-600 shadow-emerald-200/50'
-                    ];
+                {candidates
+                    .sort((a, b) => {
+                        const votesA = stats?.votes.find(v => v.candidate_id === a.id)?.count || 0;
+                        const votesB = stats?.votes.find(v => v.candidate_id === b.id)?.count || 0;
+                        return votesB - votesA; // Sort by vote count descending
+                    })
+                    .map((candidate, idx) => {
+                        const voteData = stats?.votes.find(v => v.candidate_id === candidate.id);
+                        const voteCount = voteData?.count || 0;
+                        const percentage = stats?.total_valid_votes ? Math.round((voteCount / stats.total_valid_votes) * 100) : 0;
+                        const colors = [
+                            'from-blue-500 to-indigo-600 shadow-blue-200/50',
+                            'from-purple-500 to-fuchsia-600 shadow-purple-200/50',
+                            'from-emerald-500 to-teal-600 shadow-emerald-200/50'
+                        ];
 
-                    return (
-                        <div key={candidate.id} className="group relative">
-                            <div className={cn(
-                                "absolute -inset-0.5 bg-gradient-to-r blur opacity-25 group-hover:opacity-50 transition duration-1000 group-hover:duration-200",
-                                idx === 0 ? "from-blue-600 to-cyan-400" : idx === 1 ? "from-purple-600 to-pink-400" : "from-emerald-600 to-teal-400"
-                            )} />
+                        return (
+                            <div key={candidate.id} className="group relative">
+                                <div className={cn(
+                                    "absolute -inset-0.5 bg-gradient-to-r blur opacity-25 group-hover:opacity-50 transition duration-1000 group-hover:duration-200",
+                                    idx === 0 ? "from-blue-600 to-cyan-400" : idx === 1 ? "from-purple-600 to-pink-400" : "from-emerald-600 to-teal-400"
+                                )} />
 
-                            <Card className="relative h-full border-none shadow-2xl bg-white overflow-hidden p-0 rounded-[2rem]">
-                                <div className="p-6 flex flex-col items-center">
-                                    <div className="relative mb-6 group/photo">
-                                        <div className="absolute -inset-3 bg-gradient-to-tr from-slate-100 to-white rounded-[2.5rem] -z-10 group-hover/photo:scale-105 transition-transform duration-500" />
-                                        <div className="w-32 h-44 rounded-[2rem] bg-slate-50 overflow-hidden shadow-xl border-2 border-white transition-all duration-500 group-hover/photo:-translate-y-1">
-                                            {candidate.photo_url ? (
-                                                <img src={candidate.photo_url} alt={candidate.name} className="w-full h-full object-cover grayscale-[0.2] hover:grayscale-0 transition-all duration-500" />
-                                            ) : (
-                                                <div className="w-full h-full flex items-center justify-center text-slate-300">
-                                                    <Users size={40} />
+                                <Card className="relative h-full border-none shadow-2xl bg-white overflow-hidden p-0 rounded-[2rem]">
+                                    <div className="p-6 flex flex-col items-center">
+                                        <div className="relative mb-6 group/photo">
+                                            <div className="absolute -inset-3 bg-gradient-to-tr from-slate-100 to-white rounded-[2.5rem] -z-10 group-hover/photo:scale-105 transition-transform duration-500" />
+                                            <div className="w-32 h-44 rounded-[2rem] bg-slate-50 overflow-hidden shadow-xl border-2 border-white transition-all duration-500 group-hover/photo:-translate-y-1">
+                                                {candidate.photo_url ? (
+                                                    <img src={candidate.photo_url} alt={candidate.name} className="w-full h-full object-cover grayscale-[0.2] hover:grayscale-0 transition-all duration-500" />
+                                                ) : (
+                                                    <div className="w-full h-full flex items-center justify-center text-slate-300">
+                                                        <Users size={40} />
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <div className="absolute -bottom-2 -right-2 w-10 h-10 rounded-full bg-white flex items-center justify-center shadow-lg border-2 border-slate-50">
+                                                <span className="text-lg font-black text-slate-900">{candidate.display_order || idx + 1}</span>
+                                            </div>
+                                        </div>
+
+                                        <h2 className="text-xl font-black text-slate-900 text-center mb-6 leading-tight h-14 flex items-center">
+                                            {candidate.name}
+                                        </h2>
+
+                                        <div className="w-full space-y-2">
+                                            <div className="flex items-end justify-between px-1">
+                                                <div className="flex flex-col">
+                                                    <span className="text-[8px] font-black text-slate-400 uppercase tracking-[0.2em]">Total Perolehan</span>
+                                                    <span className="text-4xl font-black text-slate-900 leading-none">{voteCount}</span>
                                                 </div>
-                                            )}
-                                        </div>
-                                        <div className="absolute -bottom-2 -right-2 w-10 h-10 rounded-full bg-white flex items-center justify-center shadow-lg border-2 border-slate-50">
-                                            <span className="text-lg font-black text-slate-900">{idx + 1}</span>
-                                        </div>
-                                    </div>
-
-                                    <h2 className="text-xl font-black text-slate-900 text-center mb-6 leading-tight h-14 flex items-center">
-                                        {candidate.name}
-                                    </h2>
-
-                                    <div className="w-full space-y-2">
-                                        <div className="flex items-end justify-between px-1">
-                                            <div className="flex flex-col">
-                                                <span className="text-[8px] font-black text-slate-400 uppercase tracking-[0.2em]">Total Perolehan</span>
-                                                <span className="text-4xl font-black text-slate-900 leading-none">{voteCount}</span>
+                                                <div className="text-right">
+                                                    <span className="text-xl font-black text-primary leading-none">{percentage}%</span>
+                                                </div>
                                             </div>
-                                            <div className="text-right">
-                                                <span className="text-xl font-black text-primary leading-none">{percentage}%</span>
+
+                                            <div className="h-3 w-full bg-slate-100 rounded-full overflow-hidden p-0.5 shadow-inner">
+                                                <div
+                                                    className={cn("h-full rounded-full transition-all duration-1000 ease-out bg-gradient-to-r shadow-lg", colors[idx % 3])}
+                                                    style={{ width: `${percentage}%` }}
+                                                />
                                             </div>
                                         </div>
-
-                                        <div className="h-3 w-full bg-slate-100 rounded-full overflow-hidden p-0.5 shadow-inner">
-                                            <div
-                                                className={cn("h-full rounded-full transition-all duration-1000 ease-out bg-gradient-to-r shadow-lg", colors[idx % 3])}
-                                                style={{ width: `${percentage}%` }}
-                                            />
-                                        </div>
                                     </div>
-                                </div>
-                            </Card>
-                        </div>
-                    );
-                })}
+                                </Card>
+                            </div>
+                        );
+                    })}
             </div>
 
             {/* Footer Status */}
