@@ -133,7 +133,7 @@ export default function GoogleSyncModal({ voters: initialVoters, onClose }: Goog
             const sheetCodes = new Set();
 
             // A. Process Sheet Data (Updates & New from Sheet)
-            sheetData.forEach((row, index) => {
+            sheetData.forEach((row: any, index: number) => {
                 const name = row.name || row.nama || row.Nama || '';
                 const address = row.address || row.alamat || row.Alamat || '';
                 const code = row.invitation_code?.toString().trim();
