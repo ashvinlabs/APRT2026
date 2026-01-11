@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
-import { LogIn, Loader2, ShieldAlert, CheckCircle2 } from 'lucide-react';
+import { LogIn, Loader2, ShieldAlert, CheckCircle2, Eye, EyeOff } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -13,6 +13,7 @@ import { cn } from '@/lib/utils';
 export default function LoginPage() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [recoveryMode, setRecoveryMode] = useState(false);
@@ -126,14 +127,23 @@ export default function LoginPage() {
                                             Lupa password?
                                         </button>
                                     </div>
-                                    <Input
-                                        type="password"
-                                        required
-                                        placeholder="••••••••"
-                                        className="h-14 bg-slate-50/50 border-slate-200 text-slate-900 placeholder:text-slate-300 focus:ring-primary focus:border-primary rounded-2xl transition-all text-base"
-                                        value={password}
-                                        onChange={(e) => setPassword(e.target.value)}
-                                    />
+                                    <div className="relative group/pass">
+                                        <Input
+                                            type={showPassword ? "text" : "password"}
+                                            required
+                                            placeholder="••••••••"
+                                            className="h-14 bg-slate-50/50 border-slate-200 text-slate-900 placeholder:text-slate-300 focus:ring-primary focus:border-primary rounded-2xl transition-all text-base pr-12"
+                                            value={password}
+                                            onChange={(e) => setPassword(e.target.value)}
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowPassword(!showPassword)}
+                                            className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-primary transition-colors p-2 rounded-xl hover:bg-slate-100/50"
+                                        >
+                                            {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                                        </button>
+                                    </div>
                                 </div>
 
                                 <Button

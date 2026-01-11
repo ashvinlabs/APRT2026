@@ -25,10 +25,10 @@ export default function HomePage() {
   const allFeatures = [
     { title: 'Live Dashboard', description: 'Tampilan real-time hasil suara untuk monitor/TV.', icon: BarChart3, href: '/dashboard' },
     {
-      title: 'Daftar Pemilih',
-      description: user ? 'Pendaftaran, import data, dan verifikasi undangan.' : 'Lihat Daftar Pemilih Tetap (DPT).',
+      title: user ? 'Daftar Pemilih' : 'Check DPT',
+      description: user ? 'Pendaftaran, import data, dan verifikasi undangan.' : 'Cari nama Anda di Daftar Pemilih Tetap (DPT).',
       icon: Users,
-      href: '/panitia/voters',
+      href: user ? '/panitia/voters' : '/check-dpt',
       permission: 'manage_voters'
     },
     { title: 'Penghitungan Suara', description: 'Input manual perolehan suara dari kotak suara.', icon: UserCheck, href: '/panitia/tally', permission: 'manage_votes' },
@@ -39,7 +39,7 @@ export default function HomePage() {
   // If logged in, filter by permissions.
   const features = allFeatures.filter(feature => {
     if (!user) {
-      return feature.href === '/dashboard' || feature.href === '/panitia/voters';
+      return feature.href === '/dashboard' || feature.href === '/check-dpt';
     }
     if ((feature as any).permission) {
       return hasPermission((feature as any).permission);

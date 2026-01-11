@@ -7,13 +7,14 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { UserPlus, Loader2, Mail, Lock, User } from 'lucide-react';
+import { UserPlus, Loader2, Mail, Lock, User, Eye, EyeOff } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
 export default function RegisterPage() {
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const router = useRouter();
@@ -105,18 +106,25 @@ export default function RegisterPage() {
 
                         <div className="space-y-2">
                             <Label htmlFor="password text-slate-700">Kata Sandi</Label>
-                            <div className="relative">
+                            <div className="relative group/pass">
                                 <Lock className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
                                 <Input
                                     id="password"
-                                    type="password"
+                                    type={showPassword ? "text" : "password"}
                                     placeholder="••••••••"
-                                    className="pl-10"
+                                    className="pl-10 pr-10"
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
                                     required
                                     minLength={6}
                                 />
+                                <button
+                                    type="button"
+                                    onClick={() => setShowPassword(!showPassword)}
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-primary transition-colors"
+                                >
+                                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                                </button>
                             </div>
                         </div>
                     </CardContent>

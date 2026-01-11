@@ -25,6 +25,7 @@ interface Stats {
         date?: string;
         start_time?: string;
         end_time?: string;
+        is_voting_open?: boolean;
     };
 }
 
@@ -177,6 +178,16 @@ export default function LiveDashboard() {
                 </div>
             </header>
 
+            {stats?.config.is_voting_open && (
+                <div className="bg-indigo-50 border border-indigo-100 p-4 rounded-3xl flex items-center gap-4 text-indigo-700 animate-pulse no-print">
+                    <Info size={24} className="shrink-0" />
+                    <div>
+                        <p className="font-black text-sm uppercase tracking-widest leading-none mb-1">HASIL DI-LOCK (HIDDEN COUNT)</p>
+                        <p className="text-xs font-medium">Perolehan suara kandidat hanya akan ditampilkan setelah waktu pemilihan resmi ditutup oleh Admin.</p>
+                    </div>
+                </div>
+            )}
+
             <style jsx global>{`
                 @media print {
                     .no-print { display: none !important; }
@@ -257,17 +268,21 @@ export default function LiveDashboard() {
                                         <div className="flex items-end justify-between px-1">
                                             <div className="flex flex-col">
                                                 <span className="text-[8px] font-black text-slate-400 uppercase tracking-[0.2em]">Total Perolehan</span>
-                                                <span className="text-4xl font-black text-slate-900 leading-none">{voteCount}</span>
+                                                <span className="text-4xl font-black text-slate-900 leading-none">
+                                                    {stats?.config.is_voting_open ? '???' : voteCount}
+                                                </span>
                                             </div>
                                             <div className="text-right">
-                                                <span className="text-xl font-black text-primary leading-none">{percentage}%</span>
+                                                <span className="text-xl font-black text-primary leading-none">
+                                                    {stats?.config.is_voting_open ? '???' : `${percentage}%`}
+                                                </span>
                                             </div>
                                         </div>
 
                                         <div className="h-3 w-full bg-slate-100 rounded-full overflow-hidden p-0.5 shadow-inner">
                                             <div
                                                 className={cn("h-full rounded-full transition-all duration-1000 ease-out bg-gradient-to-r shadow-lg", colors[idx % 3])}
-                                                style={{ width: `${percentage}%` }}
+                                                style={{ width: stats?.config.is_voting_open ? '0%' : `${percentage}%` }}
                                             />
                                         </div>
                                     </div>

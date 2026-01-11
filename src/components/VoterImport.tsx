@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { Upload, X, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
+import { isValidNIK } from '@/lib/utils';
 
 export default function VoterImport({ onComplete }: { onComplete: () => void }) {
     const [file, setFile] = useState<File | null>(null);
@@ -23,32 +24,69 @@ export default function VoterImport({ onComplete }: { onComplete: () => void }) 
 
         const reader = new FileReader();
         reader.onload = async (e) => {
-            const text = e.target?.result as string;
-            const lines = text.split('\n');
-            const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+            try {
+                const text = e.target?.result as string;
+                const lines = text.split('\n');
+                const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
 
-            const voters = lines.slice(1).filter(line => line.trim()).map(line => {
-                const values = line.split(',').map(v => v.trim());
-                return {
-                    name: values[headers.indexOf('nama')] || values[headers.indexOf('name')] || values[0],
-                    nik: values[headers.indexOf('nik')] || values[headers.indexOf('nik_nasional')] || '',
-                    address: values[headers.indexOf('alamat')] || values[headers.indexOf('address')] || values[1],
-                    invitation_code: values[headers.indexOf('kode')] || values[headers.indexOf('code')] || Math.random().toString(36).substring(2, 8).toUpperCase(),
-                };
-            }).filter(v => v.nik); // Ensure NIK exists for upsert
+                const rawVoters = lines.slice(1).filter(line => line.trim()).map(line => {
+                    const values = line.split(',').map(v => v.trim());
+                    return {
+                        name: values[headers.indexOf('nama')] || values[headers.indexOf('name')] || values[0],
+                        nik: values[headers.indexOf('nik')] || values[headers.indexOf('nik_nasional')] || '',
+                        address: values[headers.indexOf('alamat')] || values[headers.indexOf('address')] || values[1],
+                        invitation_code: values[headers.indexOf('kode')] || values[headers.indexOf('code')] || Math.random().toString(36).substring(2, 8).toUpperCase(),
+                    };
+                });
 
-            const { error } = await supabase.from('voters').upsert(voters, {
-                onConflict: 'nik'
-            });
+                // Fetch existing NIKs to detect duplicates
+                const { data: existingData } = await supabase.from('voters').select('nik');
+                const existingNiks = new Set(existingData?.map(v => v.nik) || []);
 
-            if (error) {
-                setMessage({ type: 'error', text: 'Gagal mengimpor data: ' + error.message });
-            } else {
-                setMessage({ type: 'success', text: `Berhasil sinkronisasi ${voters.length} data pemilih!` });
-                setFile(null);
-                setTimeout(onComplete, 1500);
+                const validVoters: any[] = [];
+                let invalidNikCount = 0;
+                let duplicateCount = 0;
+                let successCount = 0;
+
+                const seenInCsv = new Set();
+
+                rawVoters.forEach(v => {
+                    if (!isValidNIK(v.nik)) {
+                        invalidNikCount++;
+                    } else if (seenInCsv.has(v.nik)) {
+                        // Skip internal duplicates in CSV
+                    } else {
+                        seenInCsv.add(v.nik);
+                        if (existingNiks.has(v.nik)) {
+                            duplicateCount++;
+                        } else {
+                            successCount++;
+                        }
+                        validVoters.push(v);
+                    }
+                });
+
+                if (validVoters.length > 0) {
+                    const { error } = await supabase.from('voters').upsert(validVoters, {
+                        onConflict: 'nik'
+                    });
+
+                    if (error) {
+                        setMessage({ type: 'error', text: 'Gagal mengimpor data: ' + error.message });
+                    } else {
+                        const summary = `Import selesai: ${successCount} data baru, ${duplicateCount} diperbarui, ${invalidNikCount} NIK tidak valid.`;
+                        setMessage({ type: 'success', text: summary });
+                        setFile(null);
+                        setTimeout(onComplete, 3000);
+                    }
+                } else {
+                    setMessage({ type: 'error', text: `Tidak ada data valid untuk diimport. (${invalidNikCount} NIK tidak valid)` });
+                }
+            } catch (err: any) {
+                setMessage({ type: 'error', text: 'Kesalahan memproses file: ' + err.message });
+            } finally {
+                setImporting(false);
             }
-            setImporting(false);
         };
         reader.readAsText(file);
     };

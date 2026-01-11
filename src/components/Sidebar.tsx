@@ -14,7 +14,8 @@ import {
     ChevronLeft,
     Menu,
     UserPlus,
-    Info
+    Info,
+    QrCode
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import LogoutButton from './LogoutButton';
@@ -34,6 +35,8 @@ interface MenuItem {
 const menuItems: MenuItem[] = [
     { name: 'Beranda', icon: Home, href: '/' },
     { name: 'Dashboard', icon: LayoutDashboard, href: '/dashboard' },
+    { name: 'Undangan Digital', icon: QrCode, href: '/undangan' },
+    { name: 'Bilik Suara', icon: Vote, href: '/voting', permission: 'access_voting_terminal' },
     { name: 'Check-In', icon: UserCheck, href: '/panitia/check-in', permission: 'check_in' },
     { name: 'Data Pemilih', icon: Users, href: '/panitia/voters', permission: 'manage_voters' },
     { name: 'Hitung Suara', icon: Vote, href: '/panitia/tally', permission: 'manage_votes' },
@@ -52,12 +55,18 @@ export default function Sidebar() {
     // Non-logged in users only see Home and Dashboard
     const filteredItems = menuItems.filter(item => {
         if (!user) {
-            return item.href === '/' || item.name === 'Dashboard' || item.name === 'Data Pemilih';
+            return item.href === '/' || item.name === 'Dashboard' || item.name === 'Data Pemilih' || item.name === 'Undangan Digital';
         }
         if (item.permission) {
             return hasPermission(item.permission);
         }
         return true;
+    }).map(item => {
+        // Change "Data Pemilih" to "Check DPT" and URL to /check-dpt for guests
+        if (!user && item.name === 'Data Pemilih') {
+            return { ...item, name: 'Check DPT', href: '/check-dpt' };
+        }
+        return item;
     });
 
     // Show sidebar for everyone so guests can switch between Dashboard and Data Pemilih

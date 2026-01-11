@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
-import { KeyRound, Loader2, ShieldAlert, CheckCircle2 } from 'lucide-react';
+import { KeyRound, Loader2, ShieldAlert, CheckCircle2, Eye, EyeOff } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -12,6 +12,8 @@ import { Label } from '@/components/ui/label';
 export default function ResetPasswordPage() {
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState(false);
@@ -226,31 +228,51 @@ export default function ResetPasswordPage() {
                                     <Label className="text-slate-400 font-bold ml-1 text-[10px] uppercase tracking-[0.2em]">
                                         Password Baru
                                     </Label>
-                                    <Input
-                                        type="password"
-                                        required
-                                        minLength={6}
-                                        placeholder="••••••••"
-                                        disabled={!sessionValid}
-                                        className="h-14 bg-slate-50/50 border-slate-200 text-slate-900 placeholder:text-slate-300 focus:ring-primary focus:border-primary rounded-2xl transition-all text-base disabled:opacity-50"
-                                        value={password}
-                                        onChange={(e) => setPassword(e.target.value)}
-                                    />
+                                    <div className="relative group/pass">
+                                        <Input
+                                            type={showPassword ? "text" : "password"}
+                                            required
+                                            minLength={6}
+                                            placeholder="••••••••"
+                                            disabled={!sessionValid}
+                                            className="h-14 bg-slate-50/50 border-slate-200 text-slate-900 placeholder:text-slate-300 focus:ring-primary focus:border-primary rounded-2xl transition-all text-base disabled:opacity-50 pr-12"
+                                            value={password}
+                                            onChange={(e) => setPassword(e.target.value)}
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowPassword(!showPassword)}
+                                            className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-primary transition-colors p-2 rounded-xl hover:bg-slate-100/50 disabled:opacity-50"
+                                            disabled={!sessionValid}
+                                        >
+                                            {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                                        </button>
+                                    </div>
                                 </div>
 
                                 <div className="space-y-2">
                                     <Label className="text-slate-400 font-bold ml-1 text-[10px] uppercase tracking-[0.2em]">
                                         Konfirmasi Password
                                     </Label>
-                                    <Input
-                                        type="password"
-                                        required
-                                        placeholder="••••••••"
-                                        disabled={!sessionValid}
-                                        className="h-14 bg-slate-50/50 border-slate-200 text-slate-900 placeholder:text-slate-300 focus:ring-primary focus:border-primary rounded-2xl transition-all text-base disabled:opacity-50"
-                                        value={confirmPassword}
-                                        onChange={(e) => setConfirmPassword(e.target.value)}
-                                    />
+                                    <div className="relative group/pass">
+                                        <Input
+                                            type={showConfirmPassword ? "text" : "password"}
+                                            required
+                                            placeholder="••••••••"
+                                            disabled={!sessionValid}
+                                            className="h-14 bg-slate-50/50 border-slate-200 text-slate-900 placeholder:text-slate-300 focus:ring-primary focus:border-primary rounded-2xl transition-all text-base disabled:opacity-50 pr-12"
+                                            value={confirmPassword}
+                                            onChange={(e) => setConfirmPassword(e.target.value)}
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                                            className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-primary transition-colors p-2 rounded-xl hover:bg-slate-100/50 disabled:opacity-50"
+                                            disabled={!sessionValid}
+                                        >
+                                            {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                                        </button>
+                                    </div>
                                 </div>
 
                                 <Button

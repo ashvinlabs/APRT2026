@@ -145,76 +145,56 @@ function InvitationContent() {
               <div key={voter.id} className="invitation-page-segment">
                 <div className="formal-invitation">
                   {/* Header Section */}
-                  <div className="header-section">
-                    <p className="institution">Panitia Pemilihan Umum RT 12</p>
-                    <h2 className="main-title">UNDANGAN PEMILIHAN KETUA RT 12</h2>
-                    <p className="location-context">Pelem Kidul, Baturetno, Bantul</p>
-                    <div className="separator" />
+                  <div className="text-center mb-4">
+                    <p className="text-[9pt] uppercase tracking-widest m-0">Panitia Pemilihan Umum RT 12</p>
+                    <h2 className="text-[14pt] font-black my-1 uppercase">UNDANGAN PEMILIHAN KETUA RT 12</h2>
+                    <p className="text-[10pt] font-bold m-0 italic">Pelem Kidul, Baturetno, Bantul</p>
+                    <div className="mt-1 border-t border-black border-b-2 border-double h-1 shadow-[0_1px_0_0_black]" />
                   </div>
 
                   {/* Body Section */}
-                  <div className="body-section">
-                    <p className="opening">
+                  <div className="text-[10.5pt] leading-snug flex-1">
+                    <p className="mb-2">
                       Dengan hormat, Kami mengundang Bapak/Ibu/Saudara/i untuk memilih ketua RT kita yang akan diadakan pada:
                     </p>
 
-                    <div className="details-table">
-                      <div className="detail-row">
-                        <div className="detail-label">Hari / Tanggal</div>
-                        <div className="detail-value">: {formatElectionDate()}</div>
-                      </div>
-                      <div className="detail-row">
-                        <div className="detail-label">Tempat</div>
-                        <div className="detail-value">: {config?.location_detail || config?.location || '...'}</div>
-                      </div>
-                      <div className="detail-row">
-                        <div className="detail-label">Waktu</div>
-                        <div className="detail-value">: Jam {config?.start_time || '08:00'} - {config?.end_time || '11:00'} WIB</div>
-                      </div>
+                    <div className="ml-4 mb-3 space-y-0.5">
+                      <div className="flex"><span className="w-28 font-bold">Hari / Tanggal</span><span>: {formatElectionDate()}</span></div>
+                      <div className="flex"><span className="w-28 font-bold">Tempat</span><span>: {config?.location_detail || config?.location || '...'}</span></div>
+                      <div className="flex"><span className="w-28 font-bold">Waktu</span><span>: Jam {config?.start_time || '08:00'} - {config?.end_time || '11:00'} WIB</span></div>
                     </div>
 
-                    <div className="voter-box">
-                      <div className="voter-text">
-                        <p className="target-label">Kepada Yth,</p>
-                        <div className="voter-data-grid">
-                          <div className="voter-data-row">
-                            <span className="v-label">Nama</span>
-                            <span className="v-val">: <strong>{voter.name}</strong></span>
-                          </div>
-                          <div className="voter-data-row">
-                            <span className="v-label">NIK</span>
-                            <span className="v-val">: {voter.nik || '-'}</span>
-                          </div>
-                          <div className="voter-data-row">
-                            <span className="v-label">Alamat</span>
-                            <span className="v-val">: <em>{voter.address || '-'}</em></span>
-                          </div>
+                    <div className="border border-black p-3 flex justify-between items-center bg-white mb-3">
+                      <div className="space-y-3">
+                        <p className="text-[9.5pt] font-bold underline m-0">Kepada Yth,</p>
+                        <div className="space-y-0.5">
+                          <div className="flex"><span className="w-14">Nama</span><span className="font-bold">: {voter.name}</span></div>
+                          <div className="flex"><span className="w-14">NIK</span><span>: {voter.nik || '-'}</span></div>
+                          <div className="flex"><span className="w-14">Alamat</span><span>: <em className="text-[9pt]">{voter.address || '-'}</em></span></div>
                         </div>
                       </div>
-                      <div className="qr-container">
-                        <QRCodeSVG value={voter.invitation_code} size={110} level="M" includeMargin={false} />
-                        <p className="qr-code-text">{voter.invitation_code}</p>
+                      <div className="text-center pl-3 border-l border-black/10">
+                        <QRCodeSVG value={voter.invitation_code} size={100} level="M" />
+                        <p className="font-mono text-[8pt] font-bold mt-1 uppercase leading-none">{voter.invitation_code}</p>
                       </div>
                     </div>
 
-                    <p className="instruction">
+                    <p className="text-[9.5pt] text-justify leading-normal italic mb-4">
                       Dimohonkan kepada Bapak/Ibu/Saudara/i sekalian untuk membawa tanda pengenal berupa <strong>KTP</strong> dan juga <strong>undangan ini</strong> untuk dapat di-scan tanda hadirnya dan menerima surat suara.
                     </p>
                   </div>
 
                   {/* Footer Section */}
-                  <div className="footer-section">
-                    <div className="closing">
+                  <div className="flex justify-between items-end mt-auto pt-2 border-t border-black/5">
+                    <div className="text-[9.5pt] space-y-0 leading-tight">
                       <p>Demikian disampaikan dengan penuh hormat.</p>
                       <p>Terima kasih.</p>
                     </div>
-                    <div className="signature">
-                      <p className="date-city">Yogyakarta, {getInvitationDate()}</p>
-                      <p className="regards">Hormat kami,</p>
-                      <div className="committee-box">
-                        <p className="committee-name underline font-bold text-black border-none">Panitia Pemilihan Umum RT 12</p>
-                        <p className="locality">Pelem Kidul</p>
-                      </div>
+                    <div className="text-center w-56">
+                      <p className="text-[9.5pt]">Yogyakarta, {getInvitationDate()}</p>
+                      <p className="text-[9.5pt] mb-14 leading-none">Hormat kami,</p>
+                      <p className="text-[10.5pt] font-bold underline m-0 leading-none">Panitia Pemilihan Umum RT 12</p>
+                      <p className="text-[9.5pt] m-0 leading-none">Pelem Kidul</p>
                     </div>
                   </div>
                 </div>
@@ -226,204 +206,35 @@ function InvitationContent() {
 
       <style jsx>{`
         @media screen {
-          .invitation-page-segment {
-            display: none !important;
-          }
-          .hidden-on-screen {
-            display: none !important;
-          }
+          .invitation-page-segment { display: none; }
+          .hidden-on-screen { display: none; }
           .no-print-bg { background-color: #f8fafc; }
         }
 
-        .formal-invitation {
-          font-family: 'Times New Roman', serif;
-          color: black;
-          line-height: 1.3;
-          height: 100%;
-          display: flex;
-          flex-direction: column;
-        }
-
-        .header-section {
-          text-align: center;
-          margin-bottom: 0.75rem;
-        }
-
-        .institution {
-          font-size: 10pt;
-          margin: 0;
-          text-transform: uppercase;
-          letter-spacing: 0.05em;
-        }
-
-        .main-title {
-          font-size: 15pt;
-          font-weight: 900;
-          margin: 2px 0;
-          line-height: 1.1;
-        }
-
-        .location-context {
-          font-size: 11pt;
-          margin: 0;
-          font-weight: bold;
-        }
-
-        .separator {
-          height: 1px;
-          background: black;
-          margin-top: 5px;
-          border-bottom: 3px double black;
-          padding-bottom: 1px;
-        }
-
-        .body-section {
-          font-size: 11pt;
-        }
-
-        .opening {
-          margin: 0.5rem 0;
-        }
-
-        .details-table {
-          margin: 0.5rem 0 0.5rem 1rem;
-        }
-
-        .detail-row {
-          display: flex;
-          margin-bottom: 2px;
-        }
-
-        .detail-label {
-          width: 100px;
-          font-weight: bold;
-        }
-
-        .voter-box {
-          border: 1px solid black;
-          padding: 0.5cm;
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          background: #fff;
-          margin: 0.75rem 0;
-        }
-
-        .target-label {
-          font-size: 10pt;
-          margin: 0 0 0.5rem 0;
-          font-weight: bold;
-          text-decoration: underline;
-        }
-
-        .voter-data-grid {
-            display: flex;
-            flex-direction: column;
-            gap: 2px;
-        }
-
-        .voter-data-row {
-            display: flex;
-            font-size: 11pt;
-        }
-
-        .v-label {
-            width: 60px;
-        }
-
-        .qr-container {
-          text-align: center;
-          padding-left: 1rem;
-        }
-
-        .qr-code-text {
-          font-family: monospace;
-          font-size: 9pt;
-          font-weight: bold;
-          margin: 4px 0 0 0;
-        }
-
-        .instruction {
-          font-size: 9pt;
-          text-align: justify;
-          line-height: 1.25;
-          margin: 0.5rem 0;
-        }
-
-        .footer-section {
-          display: flex;
-          justify-content: space-between;
-          align-items: flex-end;
-          margin-top: 1rem;
-        }
-
-        .closing p {
-            margin: 0;
-            font-size: 10pt;
-        }
-
-        .signature {
-          text-align: center;
-          width: 250px;
-        }
-
-        .signature p {
-          margin: 0;
-          font-size: 10pt;
-        }
-
-        .regards {
-          margin-bottom: 2.2rem !important;
-        }
-
-        .committee-box {
-            margin-top: 2rem;
-        }
-
-        .committee-name {
-          font-weight: bold;
-          text-decoration: underline;
-        }
-
         @media print {
-          .no-print {
-            display: none !important;
-          }
+          @page { size: A4 portrait; margin: 0; }
+          body { background: white !important; margin: 0; }
+          .no-print { display: none !important; }
           
-          @page {
-            size: A4 portrait;
-            margin: 0;
-          }
-
-          body {
-            margin: 0;
-            background: white !important;
-          }
-
           .invitation-page-segment {
-            height: 9.9cm; /* 29.7cm / 3 = 9.9cm per invitation */
+            height: 14.85cm; /* Half of A4 (29.7cm) */
             width: 21cm;
-            padding: 0.6cm 1.2cm;
+            padding: 1.2cm 2cm;
             box-sizing: border-box;
-            border: 2px solid #333; /* Solid border around each invitation */
+            border-bottom: 2px dashed #ccc;
             page-break-inside: avoid;
             background: white !important;
-            margin: 0 !important;
-            border-radius: 0 !important;
-            box-shadow: none !important;
             display: block;
-            position: relative;
           }
 
-          .invitation-page-segment:nth-child(3n) {
-            page-break-after: always; /* New page after every 3 invitations */
-          }
-
-          .voter-box {
-            background: transparent !important;
+          .invitation-page-segment:nth-child(2n) {
+            page-break-after: always;
+            border-bottom: none;
           }
 
           .formal-invitation {
+            font-family: 'Times New Roman', serif;
+            color: black;
             height: 100%;
             display: flex;
             flex-direction: column;

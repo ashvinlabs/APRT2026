@@ -24,7 +24,7 @@ export default function RootLayout({
     <html lang="id" suppressHydrationWarning>
       <body className={`${inter.variable} flex flex-col min-h-screen`} suppressHydrationWarning>
         <UserProvider>
-          <div className="flex-1">
+          <div className="flex-1" suppressHydrationWarning>
             {children}
           </div>
           <GlobalFooter />

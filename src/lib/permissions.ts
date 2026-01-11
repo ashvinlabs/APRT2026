@@ -16,6 +16,7 @@ export interface Permissions {
     manage_invitations?: boolean;
     check_in?: boolean;
     mark_presence?: boolean;
+    access_voting_terminal?: boolean;
 }
 
 export interface Role {

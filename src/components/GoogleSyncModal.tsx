@@ -21,7 +21,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { cn } from '@/lib/utils';
+import { cn, isValidNIK } from '@/lib/utils';
 
 interface GoogleSyncModalProps {
     voters: any[];
@@ -130,13 +130,27 @@ export default function GoogleSyncModal({ voters: initialVoters, onClose }: Goog
             const finalVotersToUpsert: any[] = [];
             const sheetNiks = new Set();
 
+            let invalidNikCount = 0;
+            let duplicateCount = 0;
+            let successCount = 0;
+
             // A. Process Sheet Data (Updates & New from Sheet)
             sheetData.forEach((row, index) => {
                 const nik = row.nik?.toString().trim();
-                if (!nik) return;
+
+                if (!nik || !isValidNIK(nik)) {
+                    invalidNikCount++;
+                    return;
+                }
 
                 sheetNiks.add(nik);
                 const dbMatch = dbVoters.find(v => v.nik?.toString().trim() === nik);
+
+                if (dbMatch) {
+                    duplicateCount++;
+                } else {
+                    successCount++;
+                }
 
                 const dbUpdatedAt = dbMatch?.updated_at ? new Date(dbMatch.updated_at).getTime() : 0;
                 const sheetLastSync = row.last_sync ? new Date(row.last_sync).getTime() : 0;
@@ -199,7 +213,10 @@ export default function GoogleSyncModal({ voters: initialVoters, onClose }: Goog
                 })
             });
 
-            setStatus({ type: 'success', text: 'Advanced Sync Berhasil! Konflik data telah diselesaikan secara otomatis.' });
+            setStatus({
+                type: 'success',
+                text: `Sinkronisasi Berhasil: ${successCount} baru, ${duplicateCount} diperbarui, ${invalidNikCount} NIK salah.`
+            });
             setTimeout(() => window.location.reload(), 2000);
         } catch (err: any) {
             console.error('Advanced Sync Error:', err);

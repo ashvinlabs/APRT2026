@@ -11,7 +11,7 @@ export default function PanitiaLayout({
 }) {
     return (
         <SidebarProvider>
-            <div className="flex min-h-screen bg-[#fcfcfc]">
+            <div className="flex min-h-screen bg-[#fcfcfc]" suppressHydrationWarning>
                 <Sidebar />
                 <MobileMenuButton />
                 <main className="flex-1 overflow-x-hidden md:ml-0">

@@ -29,8 +29,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
-import { cn } from '@/lib/utils';
+import { cn, isValidNIK } from '@/lib/utils';
 import { useUser } from './UserContext';
+import { useToast } from '@/hooks/use-toast';
 
 interface Voter {
     id: string;
@@ -41,7 +42,7 @@ interface Voter {
     invitation_code: string;
 }
 
-export default function VoterManagement() {
+export default function VoterManagement({ isPublicView = false }: { isPublicView?: boolean }) {
     const router = useRouter();
     const { user, hasPermission, isLoading: userLoading } = useUser();
     const [voters, setVoters] = useState<Voter[]>([]);
@@ -55,6 +56,8 @@ export default function VoterManagement() {
     const [newVoter, setNewVoter] = useState({ name: '', nik: '', address: '' });
     const [editingVoter, setEditingVoter] = useState<Voter | null>(null);
     const [isRegistrationOpen, setIsRegistrationOpen] = useState(true);
+    const [nikError, setNikError] = useState<string | null>(null);
+    const { toast } = useToast();
 
     // Determine if user can see full data (for privacy masking)
     const canSeeFullData = user ? hasPermission('manage_voters') : false;
@@ -93,7 +96,8 @@ export default function VoterManagement() {
         setLoading(true);
 
         // Determine which table/view to query based on authentication status
-        const tableName = user?.is_approved ? 'voters' : 'public_voters';
+        // Force public_voters if isPublicView is true
+        const tableName = (isPublicView || !user?.is_approved) ? 'public_voters' : 'voters';
 
         const { data, error } = await supabase
             .from(tableName as any)
@@ -156,6 +160,13 @@ export default function VoterManagement() {
 
     async function handleAddVoter(e: React.FormEvent) {
         e.preventDefault();
+
+        if (!isValidNIK(newVoter.nik)) {
+            setNikError('NIK harus berupa 16 digit angka.');
+            return;
+        }
+        setNikError(null);
+
         const code = Math.random().toString(36).substring(2, 8).toUpperCase();
         const { error } = await supabase.from('voters').insert([{
             ...newVoter,
@@ -166,6 +177,16 @@ export default function VoterManagement() {
             setIsAddModalOpen(false);
             setNewVoter({ name: '', nik: '', address: '' });
             fetchVoters();
+            toast({
+                title: 'Berhasil',
+                description: 'Data warga berhasil ditambahkan.',
+            });
+        } else {
+            if (error.code === '23505') {
+                setNikError('NIK sudah terdaftar dalam sistem.');
+            } else {
+                alert('Gagal menambahkan data: ' + error.message);
+            }
         }
     }
 
@@ -217,8 +238,14 @@ export default function VoterManagement() {
 
     const formatNIK = (nik: string | undefined) => {
         if (!nik) return 'NIK tidak terdaftar';
-        // If we are using public_voters, the NIK is already masked by the database.
-        // If we are using voters (as approved staff), we show the full NIK.
+        if (isPublicView || !user?.is_approved) {
+            // Ensure masking even if DB view isn't updated yet
+            if (nik.length >= 16) {
+                return nik.substring(0, 4) + '************';
+            }
+            if (nik.includes('*')) return nik; // Already masked by DB
+            return nik.substring(0, 4) + '...';
+        }
         return nik;
     };
 
@@ -238,8 +265,7 @@ export default function VoterManagement() {
             <header className="flex flex-col md:flex-row justify-between items-center gap-4 md:gap-6 mb-6 md:mb-12 pb-4 md:pb-8 border-b border-slate-200">
                 <div>
                     <h1 className="text-3xl md:text-4xl font-black text-slate-900 tracking-tight">
-                        {user ? 'Manajemen ' : 'Daftar '}
-                        <span className="text-primary">Pemilih</span>
+                        {user ? 'Manajemen Pemilih' : 'Check DPT'}
                     </h1>
                     <p className="text-slate-500 font-medium mt-1 text-sm md:text-base">
                         {user
@@ -340,10 +366,12 @@ export default function VoterManagement() {
                                             </div>
                                             <div>
                                                 <h3 className="text-xl font-black text-slate-900 leading-tight mb-1">{voter.name}</h3>
-                                                <div className="flex items-center gap-2 text-primary font-black text-xs tracking-wider uppercase">
-                                                    <CreditCard size={12} />
-                                                    <span>{voter.invitation_code}</span>
-                                                </div>
+                                                {user && !isPublicView && (
+                                                    <div className="flex items-center gap-2 text-primary font-black text-xs tracking-wider uppercase">
+                                                        <CreditCard size={12} />
+                                                        <span>{voter.invitation_code}</span>
+                                                    </div>
+                                                )}
                                             </div>
                                         </div>
                                         <div className="flex items-center gap-1">
@@ -542,10 +570,21 @@ export default function VoterManagement() {
                                 <Input
                                     required
                                     placeholder="16 digit angka"
-                                    className="h-14 rounded-2xl bg-slate-50 border-slate-200 font-bold text-lg focus-visible:ring-primary/20"
+                                    className={cn(
+                                        "h-14 rounded-2xl bg-slate-50 border-slate-200 font-bold text-lg focus-visible:ring-primary/20",
+                                        nikError && "border-rose-500 bg-rose-50 focus-visible:ring-rose-200"
+                                    )}
                                     value={newVoter.nik}
-                                    onChange={e => setNewVoter({ ...newVoter, nik: e.target.value })}
+                                    onChange={e => {
+                                        setNewVoter({ ...newVoter, nik: e.target.value });
+                                        if (nikError) setNikError(null);
+                                    }}
                                 />
+                                {nikError && (
+                                    <p className="text-xs font-bold text-rose-500 mt-1 ml-1 animate-in fade-in slide-in-from-top-1">
+                                        {nikError}
+                                    </p>
+                                )}
                             </div>
                             <div className="space-y-2">
                                 <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Alamat Lengkap</p>
