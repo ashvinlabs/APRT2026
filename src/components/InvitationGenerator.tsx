@@ -1,9 +1,12 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { supabase } from '@/lib/supabase';
 import { QRCodeSVG } from 'qrcode.react';
-import { Printer, Download, Search, Loader2 } from 'lucide-react';
+import { Printer, Search, Loader2 } from 'lucide-react';
+import { useSearchParams } from 'next/navigation';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 
 interface Voter {
   id: string;
@@ -13,16 +16,24 @@ interface Voter {
   invitation_code: string;
 }
 
-export default function InvitationGenerator() {
+function InvitationContent() {
+  const searchParams = useSearchParams();
   const [voters, setVoters] = useState<Voter[]>([]);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useState(searchParams.get('nik') || '');
   const [mounted, setMounted] = useState(false);
+  const [config, setConfig] = useState<any>(null);
 
   useEffect(() => {
     setMounted(true);
     fetchVoters();
+    fetchConfig();
   }, []);
+
+  async function fetchConfig() {
+    const { data } = await supabase.from('settings').select('*').eq('id', 'election_config').single();
+    if (data?.value) setConfig(data.value);
+  }
 
   async function fetchVoters() {
     setLoading(true);
@@ -45,39 +56,49 @@ export default function InvitationGenerator() {
   );
 
   const handlePrint = () => {
-    // We already use CSS @media print to hide non-print elements.
-    // The print-grid renders filteredVoters.
     window.print();
+  };
+
+  const getInvitationDate = () => {
+    if (!config?.date) return '...';
+    const date = new Date(config.date);
+    date.setDate(date.getDate() - 7);
+    return date.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+  };
+
+  const formatElectionDate = () => {
+    if (!config?.date) return '...';
+    return new Date(config.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
   };
 
   if (!mounted) return null;
 
   return (
-    <div style={{ padding: '2rem' }}>
-      <header className="no-print" style={{ marginBottom: '3rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border)', paddingBottom: '1.5rem' }}>
+    <div className="p-4 md:p-8 max-w-7xl mx-auto min-h-screen bg-slate-50 no-print-bg">
+      {/* Web UI Header */}
+      <header className="no-print mb-8 flex flex-col md:flex-row justify-between items-center gap-6 pb-8 border-b border-slate-200">
         <div>
-          <h1 className="heading-l" style={{ margin: 0 }}>Cetak Undangan <span style={{ color: 'var(--primary)' }}>Warga</span></h1>
-          <p style={{ color: 'var(--secondary)', marginTop: '0.5rem', fontWeight: 500 }}>Generate QR Code dan cetak kartu undangan pemilihan.</p>
+          <h1 className="text-4xl font-black text-slate-900 tracking-tight">Cetak <span className="text-primary">Undangan</span></h1>
+          <p className="text-slate-500 font-medium mt-1">Generate format A4 (3 per halaman) untuk undangan resmi.</p>
         </div>
-        <button className="btn btn-primary" onClick={handlePrint} style={{ gap: '0.75rem', height: '3.5rem', padding: '0 2rem', borderRadius: '1rem', fontWeight: 800, fontSize: '1rem', boxShadow: '0 10px 15px -3px rgba(var(--primary-rgb), 0.3)' }}>
-          <Printer size={22} />
-          <span>Cetak {filteredVoters.length} Undangan</span>
-        </button>
+        <div className="flex gap-3">
+          <Button variant="outline" onClick={() => window.history.back()} className="rounded-2xl h-14 px-8 font-black">
+            Kembali
+          </Button>
+          <Button onClick={handlePrint} className="rounded-2xl h-14 px-8 font-black gap-2 shadow-xl shadow-primary/20 hover:scale-105 transition-all">
+            <Printer size={20} />
+            Cetak {filteredVoters.length} Undangan
+          </Button>
+        </div>
       </header>
 
-      <div className="card no-print" style={{ marginBottom: '2rem' }}>
-        <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-          <Search style={{ position: 'absolute', left: '1rem', color: 'var(--secondary)' }} size={20} />
-          <input
-            type="text"
-            placeholder="Cari warga untuk dicetak..."
-            className="text-senior"
-            style={{
-              width: '100%',
-              padding: '0.75rem 1rem 0.75rem 3rem',
-              borderRadius: 'var(--radius)',
-              border: '1px solid var(--border)',
-            }}
+      {/* Search Bar */}
+      <div className="no-print mb-8">
+        <div className="relative flex items-center group">
+          <Search className="absolute left-6 text-slate-400 group-focus-within:text-primary transition-colors" size={24} />
+          <Input
+            placeholder="Cari nama atau NIK warga untuk dicetak..."
+            className="pl-16 h-18 text-xl font-bold rounded-[1.5rem] border-none bg-white shadow-xl shadow-slate-200/40 focus-visible:ring-primary/20"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
@@ -85,153 +106,343 @@ export default function InvitationGenerator() {
       </div>
 
       {loading ? (
-        <div className="no-print" style={{ display: 'flex', justifyContent: 'center', padding: '3rem' }}>
-          <Loader2 className="animate-spin" size={48} color="var(--primary)" />
+        <div className="flex flex-col items-center justify-center py-20 gap-4 no-print">
+          <Loader2 className="animate-spin text-primary" size={48} />
+          <p className="text-slate-400 font-black tracking-widest uppercase text-xs">Menyiapkan Data...</p>
         </div>
       ) : (
-        <div className="print-grid">
-          {filteredVoters.map((voter) => (
-            <div key={voter.id} className="invitation-card">
-              <div className="invitation-header">
-                <h3>UNDANGAN PEMILIHAN RT 12</h3>
-                <p>Pelem Kidul, Baturetno</p>
-              </div>
-
-              <div className="invitation-body">
-                <div className="voter-info">
-                  <p className="label">Nama Pemilih:</p>
-                  <p className="name">{voter.name}</p>
-                  <p className="nik">NIK: {voter.nik || '-'}</p>
-                  <p className="address">{voter.address}</p>
+        <>
+          {/* Screen-only Preview List (Modern UI) */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 no-print">
+            {filteredVoters.map((voter) => (
+              <div key={voter.id} className="bg-white rounded-[2rem] p-6 shadow-xl shadow-slate-200/50 border border-slate-100 flex flex-col gap-4 group hover:scale-[1.02] transition-all">
+                <div className="flex justify-between items-start gap-4">
+                  <div className="space-y-1">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Warga Terdaftar</p>
+                    <h3 className="text-xl font-black text-slate-900 leading-tight">{voter.name}</h3>
+                    <p className="text-sm font-mono text-slate-500">{voter.nik || 'No NIK'}</p>
+                    <p className="text-xs text-slate-400 italic mt-2">{voter.address || 'Alamat tidak tersedia'}</p>
+                  </div>
+                  <div className="p-3 bg-slate-50 rounded-2xl border border-slate-100 group-hover:border-primary/20 transition-colors">
+                    <QRCodeSVG value={voter.invitation_code} size={64} level="M" />
+                  </div>
                 </div>
-
-                <div className="qr-box">
-                  <QRCodeSVG
-                    value={voter.invitation_code}
-                    size={100}
-                    level="H"
-                    includeMargin={false}
-                  />
-                  <p className="code">{voter.invitation_code}</p>
+                <div className="mt-auto pt-4 border-t border-slate-50 flex justify-between items-center">
+                  <span className="text-[10px] font-bold px-2 py-1 bg-primary/10 text-primary rounded-lg uppercase tracking-tight">
+                    {voter.invitation_code}
+                  </span>
+                  <Button variant="ghost" size="sm" onClick={() => { setSearch(voter.nik); setTimeout(window.print, 100); }} className="text-primary font-black hover:bg-primary/5 rounded-xl">
+                    Cetak Kertas Ini
+                  </Button>
                 </div>
               </div>
+            ))}
+          </div>
 
-              <div className="invitation-footer">
-                <p>Bawa undangan ini pada hari pemilihan.</p>
+          {/* Print-only Formal Layout */}
+          <div className="print-area hidden-on-screen">
+            {filteredVoters.map((voter) => (
+              <div key={voter.id} className="invitation-page-segment">
+                <div className="formal-invitation">
+                  {/* Header Section */}
+                  <div className="header-section">
+                    <p className="institution">Panitia Pemilihan Umum RT 12</p>
+                    <h2 className="main-title">UNDANGAN PEMILIHAN KETUA RT 12</h2>
+                    <p className="location-context">Pelem Kidul, Baturetno, Bantul</p>
+                    <div className="separator" />
+                  </div>
+
+                  {/* Body Section */}
+                  <div className="body-section">
+                    <p className="opening">
+                      Dengan hormat, Kami mengundang Bapak/Ibu/Saudara/i untuk memilih ketua RT kita yang akan diadakan pada:
+                    </p>
+
+                    <div className="details-table">
+                      <div className="detail-row">
+                        <div className="detail-label">Hari / Tanggal</div>
+                        <div className="detail-value">: {formatElectionDate()}</div>
+                      </div>
+                      <div className="detail-row">
+                        <div className="detail-label">Tempat</div>
+                        <div className="detail-value">: {config?.location_detail || config?.location || '...'}</div>
+                      </div>
+                      <div className="detail-row">
+                        <div className="detail-label">Waktu</div>
+                        <div className="detail-value">: Jam {config?.start_time || '08:00'} - {config?.end_time || '11:00'} WIB</div>
+                      </div>
+                    </div>
+
+                    <div className="voter-box">
+                      <div className="voter-text">
+                        <p className="target-label">Kepada Yth,</p>
+                        <div className="voter-data-grid">
+                          <div className="voter-data-row">
+                            <span className="v-label">Nama</span>
+                            <span className="v-val">: <strong>{voter.name}</strong></span>
+                          </div>
+                          <div className="voter-data-row">
+                            <span className="v-label">NIK</span>
+                            <span className="v-val">: {voter.nik || '-'}</span>
+                          </div>
+                          <div className="voter-data-row">
+                            <span className="v-label">Alamat</span>
+                            <span className="v-val">: <em>{voter.address || '-'}</em></span>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="qr-container">
+                        <QRCodeSVG value={voter.invitation_code} size={110} level="M" includeMargin={false} />
+                        <p className="qr-code-text">{voter.invitation_code}</p>
+                      </div>
+                    </div>
+
+                    <p className="instruction">
+                      Dimohonkan kepada Bapak/Ibu/Saudara/i sekalian untuk membawa tanda pengenal berupa <strong>KTP</strong> dan juga <strong>undangan ini</strong> untuk dapat di-scan tanda hadirnya dan menerima surat suara.
+                    </p>
+                  </div>
+
+                  {/* Footer Section */}
+                  <div className="footer-section">
+                    <div className="closing">
+                      <p>Demikian disampaikan dengan penuh hormat.</p>
+                      <p>Terima kasih.</p>
+                    </div>
+                    <div className="signature">
+                      <p className="date-city">Yogyakarta, {getInvitationDate()}</p>
+                      <p className="regards">Hormat kami,</p>
+                      <div className="committee-box">
+                        <p className="committee-name underline font-bold text-black border-none">Panitia Pemilihan Umum RT 12</p>
+                        <p className="locality">Pelem Kidul</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        </>
       )}
 
       <style jsx>{`
-        .print-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-          gap: 2rem;
+        @media screen {
+          .invitation-page-segment {
+            display: none !important;
+          }
+          .hidden-on-screen {
+            display: none !important;
+          }
+          .no-print-bg { background-color: #f8fafc; }
         }
 
-        .invitation-card {
-          border: 2px solid #000;
-          padding: 1.5rem;
-          background: white;
-          border-radius: 8px;
+        .formal-invitation {
+          font-family: 'Times New Roman', serif;
+          color: black;
+          line-height: 1.3;
+          height: 100%;
           display: flex;
           flex-direction: column;
-          gap: 1rem;
-          break-inside: avoid;
         }
 
-        .invitation-header {
+        .header-section {
           text-align: center;
-          border-bottom: 1px solid #eee;
-          padding-bottom: 0.5rem;
+          margin-bottom: 0.75rem;
         }
 
-        .invitation-header h3 {
+        .institution {
+          font-size: 10pt;
           margin: 0;
-          font-size: 1rem;
-          font-weight: 800;
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
         }
 
-        .invitation-header p {
+        .main-title {
+          font-size: 15pt;
+          font-weight: 900;
+          margin: 2px 0;
+          line-height: 1.1;
+        }
+
+        .location-context {
+          font-size: 11pt;
           margin: 0;
-          font-size: 0.75rem;
-          color: #666;
-        }
-
-        .invitation-body {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          gap: 1rem;
-        }
-
-        .voter-info .label {
-          font-size: 0.75rem;
-          color: #666;
-          margin-bottom: 0.25rem;
-        }
-
-        .voter-info .name {
-          font-size: 1.125rem;
-          font-weight: 700;
-          margin: 0;
-        }
-
-        .voter-info .nik {
-          font-size: 0.8125rem;
-          font-family: monospace;
-          margin: 0.125rem 0;
-          color: #555;
-        }
-
-        .voter-info .address {
-          font-size: 0.8125rem;
-          color: #444;
-          margin: 0;
-        }
-
-        .qr-box {
-          text-align: center;
-        }
-
-        .qr-box .code {
-          font-family: monospace;
-          font-size: 0.75rem;
-          margin-top: 0.25rem;
           font-weight: bold;
         }
 
-        .invitation-footer {
+        .separator {
+          height: 1px;
+          background: black;
+          margin-top: 5px;
+          border-bottom: 3px double black;
+          padding-bottom: 1px;
+        }
+
+        .body-section {
+          font-size: 11pt;
+        }
+
+        .opening {
+          margin: 0.5rem 0;
+        }
+
+        .details-table {
+          margin: 0.5rem 0 0.5rem 1rem;
+        }
+
+        .detail-row {
+          display: flex;
+          margin-bottom: 2px;
+        }
+
+        .detail-label {
+          width: 100px;
+          font-weight: bold;
+        }
+
+        .voter-box {
+          border: 1px solid black;
+          padding: 0.5cm;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          background: #fff;
+          margin: 0.75rem 0;
+        }
+
+        .target-label {
+          font-size: 10pt;
+          margin: 0 0 0.5rem 0;
+          font-weight: bold;
+          text-decoration: underline;
+        }
+
+        .voter-data-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .voter-data-row {
+            display: flex;
+            font-size: 11pt;
+        }
+
+        .v-label {
+            width: 60px;
+        }
+
+        .qr-container {
           text-align: center;
-          font-size: 0.7rem;
-          font-style: italic;
-          color: #888;
-          border-top: 1px solid #eee;
-          padding-top: 0.5rem;
+          padding-left: 1rem;
+        }
+
+        .qr-code-text {
+          font-family: monospace;
+          font-size: 9pt;
+          font-weight: bold;
+          margin: 4px 0 0 0;
+        }
+
+        .instruction {
+          font-size: 9pt;
+          text-align: justify;
+          line-height: 1.25;
+          margin: 0.5rem 0;
+        }
+
+        .footer-section {
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-end;
+          margin-top: 1rem;
+        }
+
+        .closing p {
+            margin: 0;
+            font-size: 10pt;
+        }
+
+        .signature {
+          text-align: center;
+          width: 250px;
+        }
+
+        .signature p {
+          margin: 0;
+          font-size: 10pt;
+        }
+
+        .regards {
+          margin-bottom: 2.2rem !important;
+        }
+
+        .committee-box {
+            margin-top: 2rem;
+        }
+
+        .committee-name {
+          font-weight: bold;
+          text-decoration: underline;
         }
 
         @media print {
           .no-print {
             display: none !important;
           }
-          .print-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 1cm;
+          
+          @page {
+            size: A4 portrait;
+            margin: 0;
           }
+
           body {
+            margin: 0;
             background: white !important;
-            padding: 0 !important;
           }
-          .container {
-            max-width: none !important;
-            padding: 0 !important;
+
+          .invitation-page-segment {
+            height: 9.9cm; /* 29.7cm / 3 = 9.9cm per invitation */
+            width: 21cm;
+            padding: 0.6cm 1.2cm;
+            box-sizing: border-box;
+            border: 2px solid #333; /* Solid border around each invitation */
+            page-break-inside: avoid;
+            background: white !important;
             margin: 0 !important;
+            border-radius: 0 !important;
+            box-shadow: none !important;
+            display: block;
+            position: relative;
+          }
+
+          .invitation-page-segment:nth-child(3n) {
+            page-break-after: always; /* New page after every 3 invitations */
+          }
+
+          .voter-box {
+            background: transparent !important;
+          }
+
+          .formal-invitation {
+            height: 100%;
+            display: flex;
+            flex-direction: column;
           }
         }
       `}</style>
     </div>
+  );
+}
+
+export default function InvitationGenerator() {
+  return (
+    <Suspense fallback={
+      <div className="flex flex-col items-center justify-center p-20 gap-4">
+        <Loader2 className="animate-spin text-primary" size={48} />
+        <p className="text-slate-400 font-bold uppercase tracking-widest text-xs">Loading Components...</p>
+      </div>
+    }>
+      <InvitationContent />
+    </Suspense>
   );
 }

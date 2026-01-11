@@ -13,7 +13,8 @@ import {
     Settings,
     ChevronLeft,
     Menu,
-    UserPlus
+    UserPlus,
+    Info
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import LogoutButton from './LogoutButton';
@@ -21,6 +22,7 @@ import { useSidebar } from './SidebarContext';
 import { Button } from '@/components/ui/button';
 import { useUser } from './UserContext';
 import { Permissions } from '@/lib/permissions';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 interface MenuItem {
     name: string;
@@ -36,7 +38,7 @@ const menuItems: MenuItem[] = [
     { name: 'Data Pemilih', icon: Users, href: '/panitia/voters', permission: 'manage_voters' },
     { name: 'Hitung Suara', icon: Vote, href: '/panitia/tally', permission: 'manage_votes' },
     { name: 'Cetak Undangan', icon: Printer, href: '/panitia/invitations', permission: 'manage_invitations' },
-    { name: 'Log Aktivitas', icon: History, href: '/panitia/staff', permission: 'view_logs' },
+    { name: 'Manajemen Tim', icon: Users, href: '/panitia/staff', permission: 'view_logs' },
     { name: 'Pengaturan', icon: Settings, href: '/panitia/settings', permission: 'manage_settings' },
 ];
 
@@ -50,7 +52,7 @@ export default function Sidebar() {
     // Non-logged in users only see Home and Dashboard
     const filteredItems = menuItems.filter(item => {
         if (!user) {
-            return item.href === '/' || item.href === '/dashboard';
+            return item.href === '/' || item.name === 'Dashboard' || item.name === 'Data Pemilih';
         }
         if (item.permission) {
             return hasPermission(item.permission);
@@ -58,24 +60,24 @@ export default function Sidebar() {
         return true;
     });
 
-    // If no user and dashboard, don't show sidebar (as per requirement: "non logged in user will not see the sidebar on this page")
-    // Wait, the requirement says "Dashboard: non logged in user will not see the sidebar on this page".
-    // I need to check the current page.
-    if (!user && pathname === '/dashboard') return null;
-    if (!user && pathname === '/') return null;
+    // Show sidebar for everyone so guests can switch between Dashboard and Data Pemilih
+    if (!user && pathname === '/login') return null;
 
     return (
         <aside className={cn(
-            "no-print flex flex-col h-screen sticky top-0 z-40 bg-white border-r border-slate-200 shadow-sm transition-all duration-300",
-            isOpen ? "w-[280px]" : "w-[80px]"
+            "no-print flex flex-col h-screen sticky top-0 z-40 bg-[#f9f9fb] border-r border-slate-200/60 shadow-[1px_0_0_0_rgba(0,0,0,0.02)] transition-all duration-300",
+            // Mobile: hidden by default, show when open
+            "fixed md:sticky -left-[280px] md:left-0",
+            isOpen ? "left-0 md:w-[280px]" : "md:w-[80px]",
+            // Always full width on mobile when open
+            isOpen && "w-[280px]"
         )}>
             {/* Header */}
             <div className={cn(
-                "flex items-center min-h-[80px] px-6 border-b border-slate-200",
-                isOpen ? "justify-between" : "justify-center"
+                "flex items-center justify-center min-h-[80px] px-6 border-b border-slate-200/60"
             )}>
                 {isOpen ? (
-                    <>
+                    <div className="flex items-center justify-between w-full">
                         <div className="flex items-center gap-3">
                             <div className="w-10 h-10 rounded-lg bg-primary flex items-center justify-center text-white font-bold">
                                 A
@@ -97,7 +99,7 @@ export default function Sidebar() {
                         >
                             <ChevronLeft size={20} />
                         </Button>
-                    </>
+                    </div>
                 ) : (
                     <Button
                         variant="ghost"
@@ -136,15 +138,57 @@ export default function Sidebar() {
                 })}
             </nav>
 
+            {/* About Link - Before Footer */}
+            <div className="px-3 pb-3">
+                <Link
+                    href="/about"
+                    className={cn(
+                        "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all no-underline",
+                        pathname === '/about'
+                            ? "bg-primary text-white shadow-md"
+                            : "text-slate-600 hover:bg-slate-100 hover:text-slate-900",
+                        !isOpen && "justify-center"
+                    )}
+                    title={!isOpen ? 'Tentang' : ''}
+                >
+                    <Info size={20} className="flex-shrink-0" />
+                    {isOpen && <span className="whitespace-nowrap">Tentang</span>}
+                </Link>
+            </div>
+
             {/* Footer */}
-            <div className="p-3 border-t border-slate-200">
+            <div className="p-3 border-t border-slate-200/60">
                 {user ? (
-                    <LogoutButton hideText={!isOpen} />
+                    <div className="flex flex-col gap-2">
+                        {/* User Profile Card */}
+                        <div className={cn(
+                            "flex items-center gap-3 p-2 rounded-2xl bg-white border border-slate-100 shadow-sm transition-all duration-300",
+                            !isOpen && "justify-center border-none bg-transparent shadow-none"
+                        )}>
+                            <Avatar className="h-8 w-8 border border-slate-100 shadow-sm shrink-0">
+                                <AvatarImage src={user.photo_url || ''} className="object-cover" />
+                                <AvatarFallback className="bg-indigo-50 text-primary font-bold text-xs shrink-0 border border-primary/10">
+                                    {(user.name || 'U')[0].toUpperCase()}
+                                </AvatarFallback>
+                            </Avatar>
+                            {isOpen && (
+                                <div className="flex flex-col min-w-0">
+                                    <span className="text-[11px] font-black text-slate-800 truncate leading-none mb-1 uppercase tracking-tight">
+                                        {user.name}
+                                    </span>
+                                    <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest truncate">
+                                        {user.roles?.[0]?.name || 'Petugas'}
+                                    </span>
+                                </div>
+                            )}
+                        </div>
+                        <LogoutButton hideText={!isOpen} />
+                    </div>
                 ) : (
                     <Link
                         href="/login"
                         className={cn(
-                            "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-primary hover:bg-primary/5 transition-all text-secondary no-underline",
+                            "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-bold text-slate-500 hover:bg-white hover:text-primary transition-all no-underline",
                             !isOpen && "justify-center"
                         )}
                     >

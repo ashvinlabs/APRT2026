@@ -4,6 +4,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { UserProfile } from '@/lib/auth-utils';
 import { Permissions, aggregatePermissions, Role } from '@/lib/permissions';
+import { useRouter } from 'next/navigation';
 
 interface UserContextType {
     user: UserProfile | null;
@@ -17,6 +18,7 @@ const UserContext = createContext<UserContextType | undefined>(undefined);
 export function UserProvider({ children }: { children: React.ReactNode }) {
     const [user, setUser] = useState<UserProfile | null>(null);
     const [isLoading, setIsLoading] = useState(true);
+    const router = useRouter();
 
     const fetchUserProfile = async (userId: string) => {
         // Fetch staff profile
@@ -27,10 +29,13 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
             .single();
 
         if (staffError || !staff) {
+            console.log('UserContext: Staff profile not found for ID:', userId, staffError);
             setUser(null);
             setIsLoading(false);
             return;
         }
+
+        console.log('UserContext: Found staff profile:', staff.id);
 
         // Fetch roles
         const { data: roles } = await supabase
@@ -59,6 +64,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 
     const refreshUser = async () => {
         const { data: { user: authUser } } = await supabase.auth.getUser();
+        console.log('UserContext: Auth user check:', authUser?.id);
         if (authUser) {
             await fetchUserProfile(authUser.id);
         } else {

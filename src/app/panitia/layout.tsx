@@ -1,6 +1,7 @@
 'use client';
 
 import Sidebar from '@/components/Sidebar';
+import MobileMenuButton from '@/components/MobileMenuButton';
 import { SidebarProvider } from '@/components/SidebarContext';
 
 export default function PanitiaLayout({
@@ -10,9 +11,10 @@ export default function PanitiaLayout({
 }) {
     return (
         <SidebarProvider>
-            <div style={{ display: 'flex', minHeight: '100vh' }}>
+            <div className="flex min-h-screen bg-[#fcfcfc]">
                 <Sidebar />
-                <main style={{ flex: 1, backgroundColor: 'var(--background)', overflowX: 'hidden' }}>
+                <MobileMenuButton />
+                <main className="flex-1 overflow-x-hidden md:ml-0">
                     {children}
                 </main>
             </div>

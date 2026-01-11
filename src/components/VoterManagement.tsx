@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import {
     Users,
@@ -16,9 +17,14 @@ import {
     MapPin,
     CreditCard,
     Info,
-    Download
+    Download,
+    Trash2,
+    Cloud,
+    ExternalLink,
+    Pencil
 } from 'lucide-react';
 import VoterImport from './VoterImport';
+import GoogleSyncModal from './GoogleSyncModal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -36,15 +42,22 @@ interface Voter {
 }
 
 export default function VoterManagement() {
+    const router = useRouter();
     const { user, hasPermission, isLoading: userLoading } = useUser();
     const [voters, setVoters] = useState<Voter[]>([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
     const [isImportModalOpen, setIsImportModalOpen] = useState(false);
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+    const [isSyncModalOpen, setIsSyncModalOpen] = useState(false);
     const [mounted, setMounted] = useState(false);
     const [newVoter, setNewVoter] = useState({ name: '', nik: '', address: '' });
+    const [editingVoter, setEditingVoter] = useState<Voter | null>(null);
     const [isRegistrationOpen, setIsRegistrationOpen] = useState(true);
+
+    // Determine if user can see full data (for privacy masking)
+    const canSeeFullData = user ? hasPermission('manage_voters') : false;
 
     useEffect(() => {
         setMounted(true);
@@ -81,12 +94,36 @@ export default function VoterManagement() {
         const { data, error } = await supabase
             .from('voters')
             .select('*')
-            .order('name', { ascending: true });
+            .order('display_order', { ascending: true });
+
+        console.log('VoterManagement: Fetch result', {
+            dataCount: data?.length || 0,
+            error: error?.message,
+            hasData: !!data,
+            isAuthenticated: !!user
+        });
 
         if (!error) {
             setVoters(data || []);
+        } else {
+            console.error('VoterManagement: Error fetching voters', error);
         }
         setLoading(false);
+    }
+
+    async function deleteVoter(voterId: string, name: string) {
+        if (!confirm(`Apakah Anda yakin ingin menghapus data warga "${name}"? Tindakan ini tidak dapat dibatalkan.`)) return;
+
+        const { error } = await supabase
+            .from('voters')
+            .delete()
+            .eq('id', voterId);
+
+        if (error) {
+            alert('Gagal menghapus data: ' + error.message);
+        } else {
+            setVoters(voters.filter(v => v.id !== voterId));
+        }
     }
 
     async function togglePresence(voterId: string, currentStatus: boolean) {
@@ -126,6 +163,27 @@ export default function VoterManagement() {
         }
     }
 
+    async function handleEditVoter(e: React.FormEvent) {
+        e.preventDefault();
+        if (!editingVoter) return;
+
+        const { error } = await supabase
+            .from('voters')
+            .update({
+                name: editingVoter.name,
+                address: editingVoter.address
+            })
+            .eq('id', editingVoter.id);
+
+        if (error) {
+            alert('Gagal mengupdate data: ' + error.message);
+        } else {
+            setIsEditModalOpen(false);
+            setEditingVoter(null);
+            fetchVoters();
+        }
+    }
+
     const exportToCSV = () => {
         const headers = ['Nama', 'NIK', 'Alamat', 'Kode Undangan', 'Kehadiran', 'Waktu Hadir'];
         const csvContent = [
@@ -151,35 +209,59 @@ export default function VoterManagement() {
         document.body.removeChild(link);
     };
 
+    const formatNIK = (nik: string | undefined) => {
+        if (!nik) return 'NIK tidak terdaftar';
+        if (canSeeFullData) return nik;
+        if (nik.length < 5) return '***';
+        return `${nik.slice(0, 3)}********${nik.slice(-2)}`;
+    };
+
     const filteredVoters = voters.filter(v =>
         v.name.toLowerCase().includes(search.toLowerCase()) ||
         v.nik?.includes(search) ||
         v.invitation_code?.toLowerCase().includes(search.toLowerCase())
     );
 
-    if (!mounted || userLoading) return null;
+    // Only wait for user loading if we're actually checking authentication
+    // For public access, we can render immediately
+    if (!mounted) return null;
 
     return (
-        <div className="p-8 max-w-[1400px] mx-auto animate-fade-in" suppressHydrationWarning>
+        <div className="px-2 py-8 md:p-8 max-w-[1400px] mx-auto animate-fade-in" suppressHydrationWarning>
             {/* Page Header */}
-            <header className="flex flex-col md:flex-row justify-between items-center gap-6 mb-12 pb-8 border-b border-slate-200">
+            <header className="flex flex-col md:flex-row justify-between items-center gap-4 md:gap-6 mb-6 md:mb-12 pb-4 md:pb-8 border-b border-slate-200">
                 <div>
-                    <h1 className="text-4xl font-black text-slate-900 tracking-tight">Manajemen <span className="text-primary">Pemilih</span></h1>
-                    <p className="text-slate-500 font-medium mt-1">Kelola data DPT, verifikasi kehadiran, dan cetak undangan warga.</p>
+                    <h1 className="text-3xl md:text-4xl font-black text-slate-900 tracking-tight">
+                        {user ? 'Manajemen ' : 'Daftar '}
+                        <span className="text-primary">Pemilih</span>
+                    </h1>
+                    <p className="text-slate-500 font-medium mt-1 text-sm md:text-base">
+                        {user
+                            ? 'Kelola data DPT, verifikasi kehadiran, dan cetak undangan warga.'
+                            : 'Lihat Daftar Pemilih Tetap (DPT) Pemilu RT 12 Pelem Kidul.'}
+                    </p>
                 </div>
-                <div className="flex gap-3">
-                    <Button variant="outline" onClick={exportToCSV} className="rounded-2xl h-12 px-6 font-bold shadow-sm hover:bg-slate-50 transition-all border-slate-200">
-                        <Download className="mr-2 h-5 w-5 text-emerald-500" />
-                        Export CSV
-                    </Button>
-                    {(hasPermission('manage_voters') || hasPermission('edit_voters')) && (
+                <div className="flex flex-wrap gap-2 md:gap-3 w-full md:w-auto justify-center">
+                    {user && (
+                        <Button variant="outline" onClick={() => setIsSyncModalOpen(true)} className="rounded-2xl h-10 md:h-12 px-4 md:px-6 font-bold shadow-sm hover:bg-slate-50 transition-all border-slate-200 text-xs md:text-sm">
+                            <Cloud className="mr-2 h-4 w-4 md:h-5 md:w-5 text-blue-500" />
+                            Google Sheets
+                        </Button>
+                    )}
+                    {user && (
+                        <Button variant="outline" onClick={exportToCSV} className="rounded-2xl h-10 md:h-12 px-4 md:px-6 font-bold shadow-sm hover:bg-slate-50 transition-all border-slate-200 text-xs md:text-sm">
+                            <Download className="mr-2 h-4 w-4 md:h-5 md:w-5 text-emerald-500" />
+                            Export CSV
+                        </Button>
+                    )}
+                    {user && (hasPermission('manage_voters') || hasPermission('edit_voters')) && (
                         <>
-                            <Button variant="outline" onClick={() => setIsImportModalOpen(true)} className="rounded-2xl h-12 px-6 font-bold shadow-sm hover:bg-slate-50 transition-all border-slate-200">
-                                <FileUp className="mr-2 h-5 w-5 text-indigo-500" />
+                            <Button variant="outline" onClick={() => setIsImportModalOpen(true)} className="rounded-2xl h-10 md:h-12 px-4 md:px-6 font-bold shadow-sm hover:bg-slate-50 transition-all border-slate-200 text-xs md:text-sm">
+                                <FileUp className="mr-2 h-4 w-4 md:h-5 md:w-5 text-indigo-500" />
                                 Import CSV
                             </Button>
-                            <Button onClick={() => setIsAddModalOpen(true)} className="rounded-2xl h-12 px-6 font-black shadow-lg shadow-primary/20 hover:scale-[1.02] transition-all">
-                                <UserPlus className="mr-2 h-5 w-5" />
+                            <Button onClick={() => setIsAddModalOpen(true)} className="rounded-2xl h-10 md:h-12 px-4 md:px-6 font-black shadow-lg shadow-primary/20 hover:scale-[1.02] transition-all text-xs md:text-sm">
+                                <UserPlus className="mr-2 h-4 w-4 md:h-5 md:w-5" />
                                 Tambah Manual
                             </Button>
                         </>
@@ -188,14 +270,14 @@ export default function VoterManagement() {
             </header>
 
             {/* Quick Stats & Search */}
-            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-10">
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 md:gap-6 mb-6 md:mb-10">
                 <Card className="lg:col-span-3 border-none bg-white shadow-xl shadow-slate-200/40 rounded-3xl overflow-hidden ring-1 ring-slate-100">
-                    <CardContent className="p-4">
+                    <CardContent className="p-3 md:p-4">
                         <div className="relative flex items-center group">
-                            <Search className="absolute left-4 text-slate-400 group-focus-within:text-primary transition-colors" size={24} />
+                            <Search className="absolute left-3 md:left-4 text-slate-400 group-focus-within:text-primary transition-colors" size={20} />
                             <Input
                                 placeholder="Cari nama, NIK, atau kode undangan..."
-                                className="pl-14 h-16 text-lg font-medium border-none focus-visible:ring-0 bg-transparent placeholder:text-slate-300"
+                                className="pl-10 md:pl-14 h-12 md:h-16 text-base md:text-lg font-medium border-none focus-visible:ring-0 bg-transparent placeholder:text-slate-300"
                                 value={search}
                                 onChange={(e) => setSearch(e.target.value)}
                             />
@@ -208,112 +290,152 @@ export default function VoterManagement() {
                     </CardContent>
                 </Card>
 
-                <Card className="border-none bg-primary text-white shadow-xl shadow-primary/20 rounded-3xl group transition-all hover:scale-[1.02]">
-                    <CardContent className="p-6 flex flex-col justify-center h-full">
-                        <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-70 mb-1">Kehadiran (Check-in)</p>
-                        <div className="flex items-end gap-2">
-                            <span className="text-4xl font-black leading-none">{voters.filter(v => v.is_present).length}</span>
-                            <span className="text-lg font-black opacity-50 mb-0.5">/ {voters.length}</span>
+                <Card className="border-none bg-gradient-to-br from-primary to-blue-600 text-white shadow-xl shadow-primary/20 rounded-3xl overflow-hidden">
+                    <CardContent className="p-4 md:p-6 flex items-center justify-between">
+                        <div>
+                            <p className="text-white/70 font-black uppercase tracking-widest text-[10px] mb-1">Total DPT</p>
+                            <p className="text-3xl md:text-4xl font-black leading-none">{voters.length}</p>
+                        </div>
+                        <div className="w-12 h-12 md:w-16 md:h-16 rounded-2xl bg-white/10 flex items-center justify-center backdrop-blur-sm">
+                            <Users size={24} className="md:w-8 md:h-8" />
                         </div>
                     </CardContent>
                 </Card>
             </div>
 
-            {/* Voters Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+            {/* Voter Cards Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
                 {loading ? (
                     <div className="col-span-full flex flex-col items-center justify-center py-20 gap-4">
-                        <Loader2 className="animate-spin text-primary" size={48} />
-                        <p className="text-slate-400 font-black tracking-widest uppercase text-sm">Loading Voter Data...</p>
+                        <Loader2 className="animate-spin text-primary" size={64} />
+                        <p className="text-xl font-black text-slate-400 animate-pulse tracking-widest uppercase">Memuat Data Pemilih...</p>
                     </div>
-                ) : filteredVoters.map((voter) => (
-                    <Card key={voter.id} className={cn(
-                        "group border-none shadow-xl shadow-slate-200/30 rounded-3xl overflow-hidden transition-all duration-400 hover-premium bg-white ring-1 ring-slate-100",
-                        voter.is_present && "ring-2 ring-emerald-500/10 shadow-emerald-100"
-                    )}>
-                        <CardContent className="p-0">
-                            {/* Card Top Border Accent */}
-                            <div className={cn(
-                                "h-2 w-full",
-                                voter.is_present ? "bg-gradient-to-r from-emerald-400 to-teal-500" : "bg-slate-100"
-                            )} />
+                ) : (
+                    filteredVoters.map(voter => (
+                        <Card key={voter.id} className={cn(
+                            "group border-none shadow-xl shadow-slate-200/30 rounded-3xl overflow-hidden transition-all duration-400 hover-premium bg-white ring-1 ring-slate-100",
+                            voter.is_present && "ring-2 ring-emerald-500/10 shadow-emerald-100"
+                        )}>
+                            <CardContent className="p-0">
+                                {/* Card Top Border Accent */}
+                                <div className={cn(
+                                    "h-2 w-full",
+                                    voter.is_present ? "bg-gradient-to-r from-emerald-400 to-teal-500" : "bg-slate-100"
+                                )} />
 
-                            <div className="p-6">
-                                <div className="flex justify-between items-start mb-6">
-                                    <div className="flex items-center gap-4">
-                                        <div className={cn(
-                                            "w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-500",
-                                            voter.is_present ? "bg-emerald-50 text-emerald-600 rotate-6 scale-110" : "bg-slate-50 text-slate-300 group-hover:bg-primary/5 group-hover:text-primary"
-                                        )}>
-                                            <UserCircle size={32} />
-                                        </div>
-                                        <div>
-                                            <h3 className="text-xl font-black text-slate-900 leading-tight mb-1">{voter.name}</h3>
-                                            <div className="flex items-center gap-2 text-primary font-black text-xs tracking-wider uppercase">
-                                                <CreditCard size={12} />
-                                                <span>{voter.invitation_code}</span>
+                                <div className="p-6">
+                                    <div className="flex justify-between items-start mb-6">
+                                        <div className="flex items-center gap-4">
+                                            <div className={cn(
+                                                "w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-500",
+                                                voter.is_present ? "bg-emerald-50 text-emerald-600 rotate-6 scale-110" : "bg-slate-50 text-slate-300 group-hover:bg-primary/5 group-hover:text-primary"
+                                            )}>
+                                                <UserCircle size={32} />
+                                            </div>
+                                            <div>
+                                                <h3 className="text-xl font-black text-slate-900 leading-tight mb-1">{voter.name}</h3>
+                                                <div className="flex items-center gap-2 text-primary font-black text-xs tracking-wider uppercase">
+                                                    <CreditCard size={12} />
+                                                    <span>{voter.invitation_code}</span>
+                                                </div>
                                             </div>
                                         </div>
-                                    </div>
-                                    <Badge className={cn(
-                                        "px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest",
-                                        voter.is_present
-                                            ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-200 border-none animate-pulse"
-                                            : "bg-slate-100 text-slate-400 hover:bg-slate-200 border-none"
-                                    )}>
-                                        {voter.is_present ? 'Hadir' : 'Belum Hadir'}
-                                    </Badge>
-                                </div>
-
-                                <div className="space-y-3 mb-8">
-                                    <div className="flex items-center gap-3 text-slate-500 text-sm font-bold">
-                                        <span className="w-8 h-8 rounded-lg bg-slate-50 flex items-center justify-center text-slate-400">
-                                            <Info size={14} />
-                                        </span>
-                                        <span className="font-mono tracking-tighter">{voter.nik || 'NIK tidak terdaftar'}</span>
-                                    </div>
-                                    <div className="flex items-center gap-3 text-slate-400 text-xs font-bold italic">
-                                        <span className="w-8 h-8 rounded-lg bg-slate-50 flex items-center justify-center text-slate-300">
-                                            <MapPin size={14} />
-                                        </span>
-                                        <span>{voter.address || 'Alamat tidak tersedia'}</span>
-                                    </div>
-                                </div>
-
-                                <div className="grid grid-cols-2 gap-3">
-                                    {isRegistrationOpen && (
-                                        <Button
-                                            variant={voter.is_present ? "outline" : "default"}
-                                            disabled={voter.is_present && !hasPermission('manage_voters')} // Officers can't uncheck
-                                            onClick={() => togglePresence(voter.id, voter.is_present)}
-                                            className={cn(
-                                                "rounded-2xl font-black text-xs uppercase tracking-widest h-12 transition-all",
+                                        <div className="flex items-center gap-1">
+                                            {user && hasPermission('manage_voters') && (
+                                                <>
+                                                    <button
+                                                        onClick={() => {
+                                                            setEditingVoter(voter);
+                                                            setIsEditModalOpen(true);
+                                                        }}
+                                                        className="p-2 text-slate-300 hover:text-blue-500 hover:bg-blue-50 rounded-lg transition-all"
+                                                        title="Edit Warga"
+                                                    >
+                                                        <Pencil size={16} />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => deleteVoter(voter.id, voter.name)}
+                                                        className="p-2 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-all"
+                                                        title="Hapus Warga"
+                                                    >
+                                                        <Trash2 size={16} />
+                                                    </button>
+                                                </>
+                                            )}
+                                            <Badge className={cn(
+                                                "px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ml-1",
                                                 voter.is_present
-                                                    ? "border-rose-200 text-rose-500 hover:bg-rose-50 hover:text-rose-600"
-                                                    : "bg-emerald-600 hover:bg-emerald-700 shadow-lg shadow-emerald-200 hover:scale-105",
-                                                voter.is_present && !hasPermission('manage_voters') && "opacity-50 cursor-not-allowed group-hover:opacity-50 grayscale"
+                                                    ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-200 border-none animate-pulse"
+                                                    : "bg-slate-100 text-slate-400 hover:bg-slate-200 border-none"
+                                            )}>
+                                                {voter.is_present ? 'Hadir' : 'Belum Hadir'}
+                                            </Badge>
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-3 mb-8">
+                                        <div className="flex items-center gap-3 text-slate-500 text-sm font-bold">
+                                            <span className="w-8 h-8 rounded-lg bg-slate-50 flex items-center justify-center text-slate-400">
+                                                <Info size={14} />
+                                            </span>
+                                            <span className="font-mono tracking-tighter">{formatNIK(voter.nik)}</span>
+                                        </div>
+                                        <div className="flex items-center gap-3 text-slate-400 text-xs font-bold italic">
+                                            <span className="w-8 h-8 rounded-lg bg-slate-50 flex items-center justify-center text-slate-300">
+                                                <MapPin size={14} />
+                                            </span>
+                                            <span>{canSeeFullData ? (voter.address || 'Alamat tidak tersedia') : '[Alamat Dirahasiakan]'}</span>
+                                        </div>
+                                    </div>
+
+                                    {user && (
+                                        <div className="grid grid-cols-2 gap-3">
+                                            {isRegistrationOpen && (
+                                                <Button
+                                                    variant={voter.is_present ? "outline" : "default"}
+                                                    disabled={voter.is_present && !hasPermission('manage_voters')} // Officers can't uncheck
+                                                    onClick={() => togglePresence(voter.id, voter.is_present)}
+                                                    className={cn(
+                                                        "rounded-2xl font-black text-xs uppercase tracking-widest h-12 transition-all",
+                                                        voter.is_present
+                                                            ? "border-rose-200 text-rose-500 hover:bg-rose-50 hover:text-rose-600"
+                                                            : "bg-emerald-600 hover:bg-emerald-700 shadow-lg shadow-emerald-200 hover:scale-105",
+                                                        voter.is_present && !hasPermission('manage_voters') && "opacity-50 cursor-not-allowed group-hover:opacity-50 grayscale"
+                                                    )}
+                                                >
+                                                    {voter.is_present ? (
+                                                        <><XCircle className="mr-2 h-4 w-4" /> Hadir</>
+                                                    ) : (
+                                                        <><CheckCircle2 className="mr-2 h-4 w-4" /> Tandai Hadir</>
+                                                    )}
+                                                </Button>
                                             )}
-                                        >
-                                            {voter.is_present ? (
-                                                <><XCircle className="mr-2 h-4 w-4" /> Hadir</>
+                                            {hasPermission('manage_invitations') ? (
+                                                <Button
+                                                    variant="secondary"
+                                                    onClick={() => {
+                                                        // Set search to exactly this NIK and redirect
+                                                        router.push(`/panitia/invitations?nik=${voter.nik}`);
+                                                    }}
+                                                    className={cn(
+                                                        "rounded-2xl border-none bg-slate-50 text-slate-500 font-black text-xs uppercase tracking-widest h-12 hover:bg-primary/10 hover:text-primary transition-all",
+                                                        !isRegistrationOpen && "col-span-2"
+                                                    )}
+                                                >
+                                                    <Printer className="mr-2 h-4 w-4" /> Undangan
+                                                </Button>
                                             ) : (
-                                                <><CheckCircle2 className="mr-2 h-4 w-4" /> Tandai Hadir</>
+                                                !voter.is_present && !isRegistrationOpen && (
+                                                    <div className="col-span-2 text-center text-[10px] font-bold text-slate-400 uppercase">Input ditutup</div>
+                                                )
                                             )}
-                                        </Button>
-                                    )}
-                                    {hasPermission('manage_invitations') && (
-                                        <Button variant="secondary" className={cn(
-                                            "rounded-2xl border-none bg-slate-50 text-slate-500 font-black text-xs uppercase tracking-widest h-12 hover:bg-primary/10 hover:text-primary transition-all",
-                                            !isRegistrationOpen && "col-span-2"
-                                        )}>
-                                            <Printer className="mr-2 h-4 w-4" /> Undangan
-                                        </Button>
+                                        </div>
                                     )}
                                 </div>
-                            </div>
-                        </CardContent>
-                    </Card>
-                ))}
+                            </CardContent>
+                        </Card>
+                    ))
+                )}
 
                 {!loading && filteredVoters.length === 0 && (
                     <div className="col-span-full py-20 bg-white/50 border-2 border-dashed border-slate-200 rounded-[2.5rem] flex flex-col items-center justify-center gap-4 text-center">
@@ -337,6 +459,58 @@ export default function VoterManagement() {
                 </div>
             )}
 
+            {isEditModalOpen && editingVoter && (
+                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
+                    <Card className="w-full max-w-lg border-none shadow-2xl rounded-[2.5rem] overflow-hidden">
+                        <header className="p-8 bg-gradient-to-br from-blue-600 to-indigo-700 text-white relative">
+                            <div className="absolute top-0 right-0 p-8 opacity-10 pointer-events-none">
+                                <Pencil size={100} />
+                            </div>
+                            <h2 className="text-3xl font-black tracking-tight mb-1">Edit <span className="text-blue-200">Warga</span></h2>
+                            <p className="text-blue-100/60 font-bold uppercase tracking-widest text-xs">Pembaruan Data DPT</p>
+                        </header>
+                        <form onSubmit={handleEditVoter} className="p-8 space-y-6 bg-white">
+                            <div className="space-y-2">
+                                <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Nama Lengkap</p>
+                                <Input
+                                    required
+                                    className="h-14 rounded-2xl bg-slate-50 border-slate-200 font-bold text-lg focus-visible:ring-primary/20"
+                                    value={editingVoter.name}
+                                    onChange={e => setEditingVoter({ ...editingVoter, name: e.target.value })}
+                                />
+                            </div>
+                            <div className="space-y-2 opacity-60">
+                                <p className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                                    NIK (Terkunci) <Info size={12} />
+                                </p>
+                                <Input
+                                    disabled
+                                    className="h-14 rounded-2xl bg-slate-100 border-slate-200 font-bold text-lg cursor-not-allowed"
+                                    value={editingVoter.nik}
+                                />
+                                <p className="text-[10px] text-slate-400 italic">Untuk mengubah NIK, silakan hapus dan tambah ulang warga.</p>
+                            </div>
+                            <div className="space-y-2">
+                                <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Alamat Lengkap</p>
+                                <Input
+                                    required
+                                    className="h-14 rounded-2xl bg-slate-50 border-slate-200 font-bold text-lg focus-visible:ring-primary/20"
+                                    value={editingVoter.address}
+                                    onChange={e => setEditingVoter({ ...editingVoter, address: e.target.value })}
+                                />
+                            </div>
+                            <div className="flex gap-4 pt-4">
+                                <Button type="button" variant="ghost" onClick={() => { setIsEditModalOpen(false); setEditingVoter(null); }} className="flex-1 h-16 rounded-2xl font-black text-slate-400 hover:text-slate-600 transition-all">
+                                    Batal
+                                </Button>
+                                <Button type="submit" className="flex-1 h-16 rounded-2xl font-black text-lg bg-blue-600 hover:bg-blue-700 shadow-xl shadow-blue-100 hover:scale-[1.02] transition-all">
+                                    Update Data
+                                </Button>
+                            </div>
+                        </form>
+                    </Card>
+                </div>
+            )}
             {isAddModalOpen && (
                 <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
                     <Card className="w-full max-w-lg border-none shadow-2xl rounded-[2.5rem] overflow-hidden">
@@ -386,6 +560,14 @@ export default function VoterManagement() {
                             </div>
                         </form>
                     </Card>
+                </div>
+            )}
+            {isSyncModalOpen && (
+                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-start justify-center p-4 py-8 md:py-20 overflow-y-auto animate-fade-in">
+                    <GoogleSyncModal
+                        voters={voters}
+                        onClose={() => setIsSyncModalOpen(false)}
+                    />
                 </div>
             )}
         </div>

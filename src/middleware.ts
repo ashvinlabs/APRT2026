@@ -1,7 +1,7 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 
-export async function proxy(request: NextRequest) {
+export default async function middleware(request: NextRequest) {
     let supabaseResponse = NextResponse.next({
         request,
     });
@@ -32,12 +32,13 @@ export async function proxy(request: NextRequest) {
     } = await supabase.auth.getUser();
 
     const isPanitiaRoute = request.nextUrl.pathname.startsWith('/panitia');
+    const isPublicVotersRoute = request.nextUrl.pathname === '/panitia/voters';
     const isLoginPage = request.nextUrl.pathname === '/login';
     const isRegisterPage = request.nextUrl.pathname === '/register';
     const isPendingPage = request.nextUrl.pathname === '/pending-approval';
 
-    // If visiting panitia routes, check for auth and approval
-    if (isPanitiaRoute) {
+    // If visiting panitia routes (except public voter list), check for auth and approval
+    if (isPanitiaRoute && !isPublicVotersRoute) {
         if (!user) {
             const url = request.nextUrl.clone();
             url.pathname = '/login';

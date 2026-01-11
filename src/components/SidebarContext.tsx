@@ -11,15 +11,13 @@ interface SidebarContextType {
 const SidebarContext = createContext<SidebarContextType | undefined>(undefined);
 
 export function SidebarProvider({ children }: { children: React.ReactNode }) {
-    const [isOpen, setIsOpen] = useState(true);
+    const [isOpen, setIsOpen] = useState(false);
 
     // Responsive: auto-close on mobile/small screens
     useEffect(() => {
         const handleResize = () => {
             if (window.innerWidth < 1024) {
                 setIsOpen(false);
-            } else {
-                setIsOpen(true);
             }
         };
         handleResize(); // Initial check

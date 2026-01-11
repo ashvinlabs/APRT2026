@@ -9,6 +9,7 @@ CREATE TABLE IF NOT EXISTS public.staff (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   user_id UUID UNIQUE REFERENCES auth.users(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
+  email TEXT,
   is_approved BOOLEAN DEFAULT FALSE,
   approved_by UUID REFERENCES auth.users(id),
   approved_at TIMESTAMP WITH TIME ZONE,
@@ -144,15 +145,109 @@ ALTER TABLE public.settings ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Enable read for everyone" ON public.roles;
 CREATE POLICY "Enable read for everyone" ON public.roles FOR SELECT USING (true);
 
+-- Role Management Policies (Discord-style)
+DROP POLICY IF EXISTS "Enable role management for authorized staff" ON public.roles;
+CREATE POLICY "Enable role management for authorized staff" ON public.roles 
+FOR ALL TO authenticated 
+USING (
+    EXISTS (
+        SELECT 1 FROM staff s
+        JOIN staff_roles sr ON s.id = sr.staff_id
+        JOIN roles r ON sr.role_id = r.id
+        WHERE s.user_id = auth.uid()
+        AND s.is_approved = true
+        AND (r.permissions->>'all' = 'true' OR r.permissions->>'manage_roles' = 'true')
+    )
+)
+WITH CHECK (
+    EXISTS (
+        SELECT 1 FROM staff s
+        JOIN staff_roles sr ON s.id = sr.staff_id
+        JOIN roles r ON sr.role_id = r.id
+        WHERE s.user_id = auth.uid()
+        AND s.is_approved = true
+        AND (r.permissions->>'all' = 'true' OR r.permissions->>'manage_roles' = 'true')
+    )
+);
+
 DROP POLICY IF EXISTS "Enable read for everyone" ON public.staff_roles;
 CREATE POLICY "Enable read for everyone" ON public.staff_roles FOR SELECT USING (true);
+
+-- Staff Roles Management Policies
+DROP POLICY IF EXISTS "Enable staff role assignment" ON public.staff_roles;
+CREATE POLICY "Enable staff role assignment" ON public.staff_roles
+FOR ALL TO authenticated
+USING (
+    EXISTS (
+        SELECT 1 FROM staff s
+        JOIN staff_roles sr ON s.id = sr.staff_id
+        JOIN roles r ON sr.role_id = r.id
+        WHERE s.user_id = auth.uid()
+        AND s.is_approved = true
+        AND (r.permissions->>'all' = 'true' OR r.permissions->>'manage_staff' = 'true' OR r.permissions->>'view_logs' = 'true')
+    )
+)
+WITH CHECK (
+    EXISTS (
+        SELECT 1 FROM staff s
+        JOIN staff_roles sr ON s.id = sr.staff_id
+        JOIN roles r ON sr.role_id = r.id
+        WHERE s.user_id = auth.uid()
+        AND s.is_approved = true
+        AND (r.permissions->>'all' = 'true' OR r.permissions->>'manage_staff' = 'true' OR r.permissions->>'view_logs' = 'true')
+    )
+);
 
 DROP POLICY IF EXISTS "Enable read for everyone" ON public.staff;
 CREATE POLICY "Enable read for everyone" ON public.staff FOR SELECT USING (true);
 
+-- Staff Management Policies - UPDATE (for approval and self-editing)
+DROP POLICY IF EXISTS "Enable staff approval and management" ON public.staff;
+CREATE POLICY "Enable staff approval and management" ON public.staff
+FOR UPDATE TO authenticated
+USING (
+    -- Case 1: Is an Admin/Manager
+    EXISTS (
+        SELECT 1 FROM staff s
+        JOIN staff_roles sr ON s.id = sr.staff_id
+        JOIN roles r ON sr.role_id = r.id
+        WHERE s.user_id = auth.uid()
+        AND s.is_approved = true
+        AND (r.permissions->>'all' = 'true' OR r.permissions->>'manage_staff' = 'true')
+    )
+    OR
+    -- Case 2: Is the record owner
+    user_id = auth.uid()
+)
+WITH CHECK (true);
+
+-- INSERT policy for new staff (registration)
+DROP POLICY IF EXISTS "Enable staff registration" ON public.staff;
+CREATE POLICY "Enable staff registration" ON public.staff
+FOR INSERT TO authenticated
+WITH CHECK (true); -- Allow anyone authenticated to register as staff
+
+-- DELETE policy for staff
+DROP POLICY IF EXISTS "Enable staff deletion" ON public.staff;
+CREATE POLICY "Enable staff deletion" ON public.staff
+FOR DELETE TO authenticated
+USING (
+    EXISTS (
+        SELECT 1 FROM staff s
+        JOIN staff_roles sr ON s.id = sr.staff_id
+        JOIN roles r ON sr.role_id = r.id
+        WHERE s.user_id = auth.uid()
+        AND s.is_approved = true
+        AND (r.permissions->>'all' = 'true' OR r.permissions->>'manage_staff' = 'true')
+    )
+);
+
 -- Allow authenticated users to manage data based on roles
 DROP POLICY IF EXISTS "Authorized staff manage voters" ON public.voters;
 CREATE POLICY "Authorized staff manage voters" ON public.voters FOR ALL TO authenticated USING (true);
+
+DROP POLICY IF EXISTS "Enable read for everyone" ON public.voters;
+CREATE POLICY "Enable read for everyone" ON public.voters FOR SELECT USING (true);
 
 DROP POLICY IF EXISTS "Authorized staff manage votes" ON public.votes;
 CREATE POLICY "Authorized staff manage votes" ON public.votes FOR ALL TO authenticated USING (true);
@@ -177,13 +272,39 @@ CREATE POLICY "Enable all for authenticated users" ON public.settings FOR ALL TO
 -- Seed initial roles
 INSERT INTO public.roles (name, permissions, color, priority) VALUES 
 ('Super Admin', '{"all": true}', '#ef4444', 100),
-('Administrator', '{"manage_voters": true, "manage_votes": true, "manage_settings": true, "view_logs": true}', '#f59e0b', 80),
+('Administrator', '{"manage_staff": true, "manage_roles": true, "manage_voters": true, "manage_votes": true, "manage_settings": true, "view_logs": true}', '#f59e0b', 80),
 ('Controller', '{"manage_voters": true, "manage_votes": true, "manage_invitations": true}', '#3b82f6', 60),
 ('Officer', '{"check_in": true, "mark_presence": true}', '#10b981', 40)
-ON CONFLICT (name) DO NOTHING;
+ON CONFLICT (name) DO UPDATE SET 
+    permissions = EXCLUDED.permissions,
+    color = EXCLUDED.color,
+    priority = EXCLUDED.priority;
 
 -- Seed initial settings
 INSERT INTO public.settings (id, value) 
 VALUES 
-    ('election_config', '{"title": "Pemilihan Ketua RT 12", "location": "Pelem Kidul - Baturetno", "is_voting_open": true, "is_registration_open": true, "date": "2026-01-10"}')
-ON CONFLICT (id) DO NOTHING;
+    ('election_config', '{"title": "Pemilihan Ketua RT 12", "location": "Pelem Kidul - Baturetno", "location_detail": "Balai RT 12 (Rumah Bapak Ketua RT)", "is_voting_open": true, "is_registration_open": true, "date": "2026-01-10", "start_time": "08:00", "end_time": "12:00"}')
+ON CONFLICT (id) DO UPDATE SET value = EXCLUDED.value;
+-- ==========================================
+-- 6. TRIGGERS & AUTOMATION
+-- ==========================================
+
+-- Trigger to automatically create a staff record on signup/invite acceptance
+CREATE OR REPLACE FUNCTION public.handle_new_staff()
+RETURNS TRIGGER AS $$
+BEGIN
+  INSERT INTO public.staff (user_id, name, email, is_approved)
+  VALUES (
+    NEW.id,
+    COALESCE(NEW.raw_user_meta_data->>'full_name', SPLIT_PART(NEW.email, '@', 1)),
+    NEW.email,
+    FALSE
+  );
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE FUNCTION public.handle_new_staff();

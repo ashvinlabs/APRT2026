@@ -36,7 +36,10 @@ import { cn } from '@/lib/utils';
 interface ElectionConfig {
     title: string;
     location: string;
+    location_detail: string;
     date: string;
+    start_time: string;
+    end_time: string;
     is_voting_open: boolean;
     is_registration_open?: boolean;
 }
@@ -45,7 +48,10 @@ export default function SettingsManager() {
     const [config, setConfig] = useState<ElectionConfig>({
         title: 'Pemilihan Ketua RT 12',
         location: 'Pelem Kidul - Baturetno',
+        location_detail: 'Balai RT 12 (Rumah Bapak Ketua RT)',
         date: new Date().toISOString().split('T')[0],
+        start_time: '08:00',
+        end_time: '12:00',
         is_voting_open: true,
         is_registration_open: true
     });
@@ -53,6 +59,7 @@ export default function SettingsManager() {
     const [saving, setSaving] = useState(false);
     const [candidates, setCandidates] = useState<Candidate[]>([]);
     const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+    const [draggedItem, setDraggedItem] = useState<number | null>(null);
 
     useEffect(() => {
         fetchSettings();
@@ -115,8 +122,47 @@ export default function SettingsManager() {
             .from('candidates')
             .getPublicUrl(filePath);
 
-        await updateCandidate(candidateId, { photo_url: publicUrl });
+        await updateCandidate(candidateId, { photo_url: publicUrl + '?t=' + Date.now() });
         setSaving(false);
+        fetchCandidates(); // Refresh to ensure everything is synced
+    }
+
+    // Drag & Drop Handling
+    function handleDragStart(e: React.DragEvent, index: number) {
+        setDraggedItem(index);
+        e.dataTransfer.effectAllowed = 'move';
+    }
+
+    function handleDragOver(e: React.DragEvent, index: number) {
+        e.preventDefault();
+        if (draggedItem === null || draggedItem === index) return;
+
+        const items = [...candidates];
+        const itemToMove = items[draggedItem];
+        items.splice(draggedItem, 1);
+        items.splice(index, 0, itemToMove);
+
+        // Update display_order locally
+        const updatedItems = items.map((item, idx) => ({
+            ...item,
+            display_order: idx + 1
+        }));
+
+        setCandidates(updatedItems);
+        setDraggedItem(index);
+    }
+
+    async function handleDragEnd() {
+        setDraggedItem(null);
+        setSaving(true);
+        // Persist all orders to database
+        const updates = candidates.map((c, idx) =>
+            supabase.from('candidates').update({ display_order: idx + 1 }).eq('id', c.id)
+        );
+        await Promise.all(updates);
+        setSaving(false);
+        setMessage({ type: 'success', text: 'Urutan kandidat disimpan!' });
+        setTimeout(() => setMessage(null), 2000);
     }
 
     async function fetchSettings() {
@@ -230,6 +276,18 @@ export default function SettingsManager() {
                             </div>
                         </div>
                         <div className="space-y-2">
+                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">Tempat / Ruangan Detail</label>
+                            <div className="relative">
+                                <MapPin size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" />
+                                <Input
+                                    value={config.location_detail}
+                                    onChange={e => setConfig({ ...config, location_detail: e.target.value })}
+                                    className="h-14 pl-12 rounded-2xl bg-slate-50 border-slate-100 font-bold focus-visible:ring-primary/20"
+                                    placeholder="E.g. Balai RT 12 (Rumah Bapak RT)"
+                                />
+                            </div>
+                        </div>
+                        <div className="space-y-2">
                             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">Tanggal Pemilihan</label>
                             <div className="relative">
                                 <Calendar size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" />
@@ -238,6 +296,26 @@ export default function SettingsManager() {
                                     value={config.date}
                                     onChange={e => setConfig({ ...config, date: e.target.value })}
                                     className="h-14 pl-12 rounded-2xl bg-slate-50 border-slate-100 font-bold focus-visible:ring-primary/20"
+                                />
+                            </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">Jam Mulai</label>
+                                <Input
+                                    type="time"
+                                    value={config.start_time}
+                                    onChange={e => setConfig({ ...config, start_time: e.target.value })}
+                                    className="h-14 rounded-2xl bg-slate-50 border-slate-100 font-bold focus-visible:ring-primary/20"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">Jam Selesai</label>
+                                <Input
+                                    type="time"
+                                    value={config.end_time}
+                                    onChange={e => setConfig({ ...config, end_time: e.target.value })}
+                                    className="h-14 rounded-2xl bg-slate-50 border-slate-100 font-bold focus-visible:ring-primary/20"
                                 />
                             </div>
                         </div>
@@ -353,8 +431,18 @@ export default function SettingsManager() {
                     </CardHeader>
                     <CardContent className="p-8">
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            {candidates.map((candidate) => (
-                                <div key={candidate.id} className="relative group p-6 rounded-3xl bg-slate-50 border border-slate-100 hover:border-primary/20 hover:bg-white hover:shadow-xl transition-all duration-300">
+                            {candidates.map((candidate, index) => (
+                                <div
+                                    key={candidate.id}
+                                    draggable
+                                    onDragStart={(e) => handleDragStart(e, index)}
+                                    onDragOver={(e) => handleDragOver(e, index)}
+                                    onDragEnd={handleDragEnd}
+                                    className={cn(
+                                        "relative group p-6 rounded-3xl bg-slate-50 border border-slate-100 hover:border-primary/20 hover:bg-white hover:shadow-xl transition-all duration-300 cursor-move",
+                                        draggedItem === index && "opacity-40 scale-95 border-primary border-2 dashed"
+                                    )}
+                                >
                                     <button
                                         onClick={() => deleteCandidate(candidate.id)}
                                         className="absolute top-4 right-4 p-2 text-slate-300 hover:text-rose-500 transition-colors z-10"
