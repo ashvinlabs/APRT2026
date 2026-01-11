@@ -42,6 +42,9 @@ $$;
 
 GRANT EXECUTE ON FUNCTION public.search_voter_public(TEXT) TO anon, authenticated;
 
--- 2. Drop the NIK column (DPT Privacy)
+-- 2. Drop dependent view first (if exists)
+DROP VIEW IF EXISTS public.public_voters CASCADE;
+
+-- 3. Drop the NIK column (DPT Privacy)
 -- CAUTION: This is irreversible.
 ALTER TABLE public.voters DROP COLUMN IF EXISTS nik;
