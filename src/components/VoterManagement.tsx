@@ -91,16 +91,22 @@ export default function VoterManagement() {
 
     async function fetchVoters() {
         setLoading(true);
+
+        // Determine which table/view to query based on authentication status
+        const tableName = user?.is_approved ? 'voters' : 'public_voters';
+
         const { data, error } = await supabase
-            .from('voters')
+            .from(tableName as any)
             .select('*')
             .order('display_order', { ascending: true });
 
         console.log('VoterManagement: Fetch result', {
+            table: tableName,
             dataCount: data?.length || 0,
             error: error?.message,
             hasData: !!data,
-            isAuthenticated: !!user
+            isAuthenticated: !!user,
+            isApproved: user?.is_approved
         });
 
         if (!error) {
@@ -211,9 +217,9 @@ export default function VoterManagement() {
 
     const formatNIK = (nik: string | undefined) => {
         if (!nik) return 'NIK tidak terdaftar';
-        if (canSeeFullData) return nik;
-        if (nik.length < 5) return '***';
-        return `${nik.slice(0, 3)}********${nik.slice(-2)}`;
+        // If we are using public_voters, the NIK is already masked by the database.
+        // If we are using voters (as approved staff), we show the full NIK.
+        return nik;
     };
 
     const filteredVoters = voters.filter(v =>

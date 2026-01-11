@@ -31,6 +31,46 @@ export default async function middleware(request: NextRequest) {
         data: { user },
     } = await supabase.auth.getUser();
 
+    // 2-Hour Inactivity Timeout Logic
+    const SESSION_TIMEOUT = 2 * 60 * 60; // 2 hours in seconds
+    const now = Math.floor(Date.now() / 1000);
+    const lastActivity = request.cookies.get('sb-last-activity')?.value;
+
+    if (user) {
+        if (lastActivity) {
+            const idleTime = now - parseInt(lastActivity);
+            if (idleTime > SESSION_TIMEOUT) {
+                // Session expired due to inactivity
+                console.log('Middleware: Session expired due to inactivity');
+
+                // Construct redirect response
+                const url = request.nextUrl.clone();
+                url.pathname = '/login';
+                url.searchParams.set('message', 'session_expired');
+                const response = NextResponse.redirect(url);
+
+                // Clear Supabase auth cookies and inactivity cookie
+                // We use a prefix match for Supabase cookies (sb-...)
+                request.cookies.getAll().forEach(cookie => {
+                    if (cookie.name.startsWith('sb-')) {
+                        response.cookies.delete(cookie.name);
+                    }
+                });
+
+                return response;
+            }
+        }
+
+        // Update last activity for valid sessions
+        supabaseResponse.cookies.set('sb-last-activity', now.toString(), {
+            path: '/',
+            maxAge: SESSION_TIMEOUT,
+            httpOnly: true,
+            sameSite: 'lax',
+            secure: process.env.NODE_ENV === 'production',
+        });
+    }
+
     const isPanitiaRoute = request.nextUrl.pathname.startsWith('/panitia');
     const isPublicVotersRoute = request.nextUrl.pathname === '/panitia/voters';
     const isLoginPage = request.nextUrl.pathname === '/login';
