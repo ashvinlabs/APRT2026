@@ -9,55 +9,45 @@
 
 ## 📋 Tentang
 
-**APRT2026** adalah platform digital untuk pelaksanaan pemilihan Ketua RT yang transparan, efisien, dan modern. Aplikasi ini menyediakan solusi end-to-end untuk manajemen pemilihan, mulai dari pendaftaran pemilih, verifikasi kehadiran, hingga penghitungan suara secara real-time.
+**APRT2026** adalah platform digital untuk pelaksanaan pemilihan Ketua RT yang transparan, efisien, dan modern. Aplikasi ini beroperasi dalam model **Semi-Digital**, mengombinasikan verifikasi digital yang kuat dengan proses pemungutan suara fisik yang tetap terjaga integritasnya.
 
 ## ✨ Fitur Utama
 
-### 🗳️ Manajemen Pemilih (DPT)
-- Import/Export data dari CSV atau Google Sheets
-- Smart Sync dua arah dengan Google Sheets
-- Privacy mode (NIK & alamat disamarkan untuk publik)
-- Public access untuk transparansi
-- Auto-generate kode undangan unik
+### 🗳️ Manajemen Pemilih (DPT) - Privacy First
+- **Composite Identity**: Identitas unik berdasarkan kombinasi Nama & Alamat (Tanpa NIK untuk privasi maksimal).
+- **Import/Export**: Dukungan CSV dan integrasi dua arah dengan Google Sheets.
+- **Privacy Masking**: Alamat dan kode undangan disamarkan untuk akses publik.
+- **Auto-Generate Code**: Kode undangan unik 6-karakter yang dihasilkan secara deterministik.
 
 ### 📄 Sistem Undangan
-- Cetak undangan formal (3 per A4)
-- QR Code integration untuk setiap pemilih
-- Dynamic content (tanggal, waktu, lokasi)
-- Bulk print & single print
+- **Cetak Formal**: Layout 3 undangan per lembar A4 dengan Kop Surat resmi.
+- **QR Code Integration**: Setiap undangan memiliki QR code unik untuk verifikasi cepat.
+- **Dynamic Content**: Otomatis mengambil data tanggal, waktu, dan lokasi dari pengaturan sistem.
 
-### ✅ Check-In Pemilih
-- QR Code scanner untuk verifikasi
-- Real-time validation dengan feedback audio
-- Duplicate prevention
-- Recent check-in history
-- Lock/unlock check-in oleh admin
+### ✅ Check-In Pemilih & Validasi
+- **QR Scanner**: Verifikasi kehadiran instan dengan native camera access.
+- **Audio Feedback**: Feedback visual dan suara untuk status scan (Berhasil/Gagal/Duplikat).
+- **Lock System**: Admin dapat mengunci registrasi secara real-time untuk mencegah entri setelah batas waktu.
 
-### 📊 Penghitungan Suara
-- Manual input perolehan suara
-- Tracking suara sah/tidak sah
-- Real-time dashboard update
-- Audit trail lengkap
+### 📊 Penghitungan Suara (Tally) & Safeguards
+- **Voting Safeguards**: Mencegah input suara melebihi jumlah kehadiran (Check-in) yang tercatat.
+- **Counter Mode**: Mode input cepat menggunakan keyboard (Tombol angka 1-9 untuk kandidat).
+- **Real-time Sync**: Hasil input langsung muncul di Live Dashboard tanpa refresh.
+- **Undo Logic**: Fitur pembatalan suara terakhir untuk koreksi kesalahan input.
 
 ### 📺 Live Dashboard
-- Public display untuk monitor/TV
-- Real-time stats tanpa refresh
-- Responsive design
-- Print-ready layout
+- **Public Display**: Layout khusus TV/Monitor untuk transparansi publik.
+- **Presence Tracking**: Monitoring jumlah kehadiran vs total DPT secara real-time.
+- **Winner Prediction**: Visualisasi perolehan suara tertinggi secara dinamis.
 
-### 👥 Manajemen Tim & Roles
-- User registration dengan approval workflow
-- Role-Based Access Control (4 roles)
-- Staff approval system
-- Self-edit profile
-- Password reset via email
-- Activity logs
+### 👥 Manajemen Tim & Staff
+- **Approval Workflow**: Setiap pendaftaran staff baru memerlukan persetujuan Administrator.
+- **Profile Photos**: Dukungan foto profil staff (Upload & Crop) untuk identifikasi petugas.
+- **Role-Based Access**: 4 tingkat akses (Super Admin, Admin, Controller, Officer).
 
 ### ⚙️ Settings & Configuration
-- Election config (tanggal, waktu, lokasi)
-- Registration toggle
-- Candidate management
-- Real-time sync
+- **Global Config**: Pengaturan sentral untuk lokasi, waktu, dan status pemungutan suara.
+- **Sync Control**: Kendali atas integrasi Google Sheets.
 
 ## 🚀 Quick Start
 

@@ -27,54 +27,50 @@
 
 ## 🚀 Fitur Utama
 
-### 1. **Manajemen Pemilih (DPT)**
-- **Import/Export Data**: Import data pemilih dari CSV atau Google Sheets
-- **Smart Sync**: Sinkronisasi dua arah dengan Google Sheets
-- **Privacy Mode**: NIK dan alamat disamarkan untuk pengguna tanpa izin
-- **Public Access**: Daftar pemilih dapat diakses publik (dengan privacy masking)
-- **Edit & Delete**: Manajemen data pemilih dengan validasi NIK
-- **Auto-generate Invitation Code**: Kode undangan unik untuk setiap pemilih
+### 1. **Manajemen Pemilih (DPT) - Privacy First**
+- **Composite Identity**: Identifikasi pemilih menggunakan kombinasi **Nama + Alamat** eksak (NIK telah dihapus untuk keamanan data).
+- **Import/Export Data**: Import data pemilih dari CSV atau Google Sheets dengan validasi duplikasi otomatis.
+- **Smart Sync**: Sinkronisasi dua arah yang cerdas antara aplikasi dan Google Sheets.
+- **Privacy Mode**: Alamat disamarkan (`[Alamat Dirahasiakan]`) untuk pengguna tanpa izin `manage_voters`.
+- **Public Access**: Daftar pemilih dapat diakses publik dengan enkripsi/masking pada data sensitif.
+- **Deterministic Invitation Code**: Kode 6-karakter unik dihasilkan dari data identitas untuk verifikasi fisik.
 
-### 2. **Sistem Undangan**
-- **Cetak Undangan Formal**: Layout resmi dengan kop surat (3 per A4)
-- **QR Code Integration**: Setiap undangan memiliki QR code unik
-- **Dynamic Content**: Tanggal, waktu, dan lokasi dari settings
-- **Bulk Print**: Cetak semua undangan sekaligus
-- **Single Print**: Cetak undangan per pemilih dari daftar
+### 2. **Sistem Undangan & Cetak**
+- **Cetak Formal**: Layout resmi dengan kop surat, dioptimalkan untuk 3 undangan per lembar A4.
+- **QR Code Verification**: Setiap undangan memuat QR code yang memetakan ke ID pemilih di database.
+- **Dynamic Content**: Data tanggal, waktu, dan lokasi diambil secara real-time dari konfigurasi sistem.
+- **Bulk & Single Print**: Opsi untuk mencetak seluruh DPT atau kartu undangan individu.
 
-### 3. **Check-In Pemilih**
-- **QR Code Scanner**: Scan QR code dari undangan
-- **Real-time Verification**: Validasi instant dengan feedback audio
-- **Duplicate Prevention**: Cegah check-in ganda
-- **Recent History**: Log 10 check-in terakhir
-- **Lock/Unlock**: Admin dapat menutup check-in saat pemilihan selesai
+### 3. **Check-In Pemilih (Registrasi)**
+- **QR Code Scanner**: Pemindaian cepat melalui kamera native perangkat.
+- **Real-time Validation**: Validasi status kehadiran instant dengan feedback audio (Sound FX).
+- **Duplicate Prevention**: Sistem mencegah satu kode undangan digunakan lebih dari satu kali.
+- **Activity History**: Log 10 riwayat check-in terakhir ditampilkan di sidebar untuk monitoring.
+- **Registration Lock**: Kemampuan admin untuk menutup akses check-in seketika saat pemilihan dimulai.
 
-### 4. **Penghitungan Suara**
-- **Manual Input**: Input perolehan suara per kandidat
-- **Suara Sah/Tidak Sah**: Tracking suara valid dan invalid
-- **Real-time Update**: Dashboard live update otomatis
-- **Audit Trail**: Log semua aktivitas penghitungan
+### 4. **Penghitungan Suara (Tally Interface)**
+- **Voting Safeguards**: Validasi sistem untuk memastikan total suara (sah + tidak sah) tidak melebihi jumlah kehadiran fisik.
+- **Voting Lock**: Tally hanya dapat dimulai jika status voting telah di-set ke "Tertutup" di pengaturan.
+- **Counter Mode**: Mode input cepat menggunakan tombol angka keyboard (Hotkeys 1-9) untuk produktivitas tinggi.
+- **Undo Logic**: Fitur pembatalan entri terakhir untuk mengoreksi kesalahan manusia saat input.
+- **Real-time Stats**: Grafik dan perolehan suara diperbarui secara instan via Supabase Realtime.
 
-### 5. **Live Dashboard**
-- **Public Display**: Dashboard untuk TV/monitor publik
-- **Real-time Stats**: Update otomatis tanpa refresh
-- **Responsive Design**: Optimal untuk berbagai ukuran layar
-- **Print-ready**: Layout khusus untuk cetak laporan
-- **Dynamic Info**: Tanggal, hari, waktu, dan lokasi dari settings
+### 5. **Live Dashboard & Display**
+- **Public Display**: Tampilan visual yang premium untuk tayangan TV/Monitor di lokasi pemilihan.
+- **Winner Prediction**: Highlight otomatis untuk kandidat dengan suara terbanyak.
+- **Responsivitas Tinggi**: Layout beradaptasi otomatis antara mode Monitor/Projector dan perangkat mobile.
 
-### 6. **Manajemen Tim & Roles**
-- **User Registration**: Pendaftaran petugas dengan approval workflow
-- **Role-Based Access Control (RBAC)**: 4 role dengan permissions granular
-- **Staff Approval**: Admin approve/reject pendaftaran petugas baru
-- **Self-Edit Profile**: Petugas dapat edit nama sendiri
-- **Password Reset**: Reset password via email
-- **Activity Logs**: Audit trail semua aktivitas staff
+### 6. **Manajemen Tim & Keamanan**
+- **Staff Profile Photos**: Fitur unggah dan potong (crop) foto profil staff untuk identitas visual.
+- **Registration Notifications**: Notifikasi email otomatis ke seluruh **Super Admin** saat ada petugas baru yang mendaftar.
+- **RBAC (Role-Based Access Control)**: 4 level akses mulai dari Officer hingga Super Admin.
+- **Approval Workflow**: Staff baru yang mendaftar harus disetujui secara manual oleh Administrator.
+- **Comprehensive Audit Logs**: Pencatatan setiap aksi sensitif (Check-in, Input Suara, Edit Data) dengan metadata lengkap.
 
-### 7. **Settings & Configuration**
-- **Election Config**: Tanggal, waktu, lokasi pemilihan
-- **Registration Toggle**: Buka/tutup pendaftaran check-in
-- **Candidate Management**: Tambah/edit kandidat
-- **Real-time Sync**: Perubahan settings langsung tersinkronisasi
+### 7. **Settings & Global Configuration**
+- **Election Meta**: Konfigurasi nama acara, tanggal, jam operasional, dan lokasi.
+- **Operational Toggles**: Switch global untuk membuka/menutup registrasi dan mulai/berhenti penghitungan suara.
+- **Candidate Management**: Pengelolaan foto, nama, dan nomor urut kandidat.
 
 ---
 
@@ -120,6 +116,7 @@ erDiagram
         uuid user_id FK
         text name
         text email
+        text photo_url
         boolean is_approved
         timestamp created_at
     }
@@ -135,9 +132,8 @@ erDiagram
     VOTERS {
         uuid id PK
         text name
-        text nik
         text address
-        text invitation_code UK
+        text invitation_code UK "Generated from Name+Address"
         boolean is_present
         timestamp present_at
     }
@@ -154,6 +150,15 @@ erDiagram
         uuid candidate_id FK
         boolean is_valid
         uuid recorded_by FK
+        timestamp created_at
+    }
+    
+    AUDIT_LOGS {
+        uuid id PK
+        text action
+        text permission_group
+        jsonb metadata
+        uuid staff_id FK
         timestamp created_at
     }
 ```
@@ -260,22 +265,31 @@ erDiagram
    - ✅ Tampilkan feedback (sukses/gagal)
 5. Pemilih yang sudah check-in dapat mengambil surat suara
 
-#### 5. Penghitungan Suara
-1. Login sebagai Controller/Admin
-2. Buka **"Hitung Suara"**
-3. Input jumlah suara per kandidat
-4. Input jumlah suara tidak sah
-5. Klik **"Simpan"**
-6. Dashboard live akan update otomatis
+#### 5. Penghitungan Suara (Tally)
+1. Login sebagai Controller/Admin.
+2. Pastikan Status Voting telah di-set ke **"Tertutup"** di menu Pengaturan.
+3. Buka **"Hitung Suara"**.
+4. **Counter Mode (Rekomendasi)**:
+   - Tekan tombol `[K]` atau klik switch **"Mode Cepat"**.
+   - Gunakan tombol angka `1`, `2`, `3`, dst sesuai nomor urut kandidat untuk input suara +1.
+   - Tekan `0` atau `X` untuk suara tidak sah.
+   - Tekan `Backspace` atau `U` untuk membatalkan (Undo) entri terakhir jika terjadi kesalahan.
+5. **Manual Mode**: Klik pada kartu kandidat untuk menambah suara.
+6. Dashboard live akan diperbarui secara real-time.
 
-#### 6. Manajemen Tim (Admin Only)
+#### 6. Manajemen Tim & Foto Profil (Admin Only)
+
+**Update Foto Profil:**
+1. Login sebagai staff.
+2. Buka **"Manajemen Tim"** atau menu profil.
+3. Klik icon **Kamera** pada avatar petugas.
+4. Pilih foto, lakukan **Crop** agar sesuai, lalu simpan.
 
 **Approve Petugas Baru:**
-1. Login sebagai Administrator
-2. Buka **"Manajemen Tim"**
-3. Tab **"User Manager"**
-4. Lihat daftar pending approval
-5. Klik **"Approve"** atau **"Reject"**
+1. Login sebagai Administrator.
+2. Buka **"Manajemen Tim"**.
+3. Lihat daftar pendatang baru, klik **"Approve"**.
+4. Assign role yang sesuai agar petugas memiliki izin akses.
 
 **Assign Role:**
 1. Pilih staff dari daftar
@@ -302,32 +316,61 @@ erDiagram
 
 ## 🔐 Role & Permissions
 
-### Super Admin
-- **Access**: Full system access
-- **Permissions**: Semua permissions (`all: true`)
-- **Use Case**: System administrator, developer
+Sistem menggunakan model **5-Role** yang dirancang untuk memisahkan tanggung jawab antara manajemen, operasional registrasi (depan), dan operasional penghitungan (belakang).
 
-### Administrator
-- **Access**: Manajemen penuh kecuali system config
-- **Permissions**: 
-  - manage_staff, manage_roles
-  - manage_voters, manage_votes
-  - manage_settings, view_logs
-- **Use Case**: Ketua panitia, koordinator
+### 1. Struktur Role
 
-### Controller
-- **Access**: Operasional pemilihan
-- **Permissions**:
-  - manage_voters, manage_votes
-  - manage_invitations
-  - check_in, mark_presence
-- **Use Case**: Petugas lapangan senior
+#### A. High-Level Management
+| Role | Tanggung Jawab | Deskripsi |
+| :--- | :--- | :--- |
+| **Super Admin** | System Owner | Akses penuh untuk developer/IT. Maintenance database, debugging, dan perbaikan data level rendah. |
+| **Administrator** | Election Chairman | "Ketua Panitia". Mengelola user/staff, menyetujui pendaftaran petugas baru, mengubah konfigurasi vital (Waktu/Lokasi), dan melihat laporan akhir. |
 
-### Officer
-- **Access**: Check-in only
-- **Permissions**:
-  - check_in, mark_presence
-- **Use Case**: Petugas check-in di TPS
+#### B. Operational Field Roles
+| Role | Tanggung Jawab | Deskripsi |
+| :--- | :--- | :--- |
+| **Supervisor** | Field Ops Lead | "Koordinator Lapangan". Menangani kasus khusus (undangan hilang, salah nama). Memiliki hak untuk **Cetak Ulang Undangan** dan memantau jalannya Tally. |
+| **Tally Officer** | Vote Inputter | "Petugas Operator Laptop". **Fungsi Tunggal**: Input data suara (Tombol 1-9) saat penghitungan. Tidak bisa melihat alamat pemilih atau mengubah setting. |
+| **Officer** | Greeter/Check-in | "Petugas Registrasi". Bertugas scan QR Code di pintu masuk. Hanya bisa verifikasi Nama vs KTP. **Privacy**: Tidak bisa melihat alamat detail pemilih. |
+
+### 2. Permission Matrix
+
+Tabel berikut mengatur hak akses untuk setiap permission key dalam sistem:
+
+| Permission Key | Deskripsi | Super Admin | Administrator | Supervisor | Tally Officer | Officer |
+| :--- | :--- | :---: | :---: | :---: | :---: | :---: |
+| `all` | Akses Root (Bahaya) | ✅ | ❌ | ❌ | ❌ | ❌ |
+| `manage_settings` | Buka/Tutup Voting | ✅ | ✅ | ❌ | ❌ | ❌ |
+| `manage_staff` | Approve/Edit Staff | ✅ | ✅ | ❌ | ❌ | ❌ |
+| `manage_roles` | Edit Struktur Role | ✅ | ✅ | ❌ | ❌ | ❌ |
+| `view_logs` | Lihat Audit Trail | ✅ | ✅ | ✅ | ❌ | ❌ |
+| `manage_invitations` | Print/Reprint Undangan | ✅ | ✅ | ✅ | ❌ | ❌ |
+| `manage_voters` | Edit Nama/Alamat | ✅ | ✅ | ✅ | ❌ | ❌ |
+| `manage_votes` | **Input Suara (Tally)** | ✅ | ✅ | ✅ | ✅ | ❌ |
+| `undo_vote` | **Hapus Suara Terakhir** | ✅ | ✅ | ✅ | ✅* | ❌ |
+| `check_in` | Scan QR (Masuk) | ✅ | ✅ | ✅ | ❌ | ✅ |
+| `view_dashboard` | Lihat Hasil Live | ✅ | ✅ | ✅ | ✅ | ✅ |
+
+*\*Tally Officer hanya dapat membatalkan suara yang baru saja mereka input sendiri (untuk koreksi typo).*
+
+### 3. Audit Logging & Traceability
+
+Untuk menjamin keamanan dan akuntabilitas data (Non-repudiation), sistem menerapkan strategi logging berlapis:
+
+#### Layer 1: Application Logs
+Setiap aksi di antarmuka (UI) akan dicatat oleh fungsi `logActivity()` dengan metadata lengkap (Siapa, Kapan, Apa, IP).
+- **Check-in**: Mencatat ID petugas yang melakukan scan.
+- **Vote Input**: Mencatat ID petugas tally untuk setiap suara.
+- **Data Change**: Mencatat nilai lama vs nilai baru (Diff) saat edit nama/alamat.
+
+#### Layer 2: Database Triggers (Infallible)
+Trigger database otomatis aktif pada operasi Low-Level (`INSERT`, `UPDATE`, `DELETE`) di tabel kritis:
+- `voters`
+- `votes`
+- `settings`
+- `staff`
+
+Ini memastikan bahwa meskipun seseorang mencoba memanipulasi data langsung melalui API (By-pass UI), jejaknya akan tetap terekam di tabel `audit_logs` yang tidak dapat dihapus (Append-Only).
 
 ---
 

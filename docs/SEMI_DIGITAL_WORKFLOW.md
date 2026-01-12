@@ -52,11 +52,22 @@ Setelah perhitungan selesai, sistem secara otomatis merangkum:
 
 ---
 
-## 4. Perubahan Teknis Mendatang
-1. **Database**: Migrasi kolom `voters.nik` menjadi optional/nullable.
-2. **Tallying UI**: Pengembangan antarmuka khusus untuk input perhitungan cepat (Counter-mode).
-3. **Dashboard Stats**: Penambahan widget untuk Suara Sah/Tidak Sah dan Ranking.
+## 4. Keamanan & Kontrol (Safeguards)
+Untuk menjamin integritas "Semi-Digital", sistem menerapkan:
+1. **Pencegahan Over-vote**: Sistem akan menolak input suara jika jumlah total suara masuk sudah mencapai jumlah warga yang Check-In.
+2. **Kunci Voting (Lock)**: Input suara hanya aktif jika Admin telah menutup status "Voting Open" di Pengaturan (mencegah input sebelum kotak suara resmi dibuka).
+3. **Undo Satu-Langkah**: Fitur untuk menghapus 1 entri terakhir jika terjadi kesalahan ketik oleh petugas operator.
+4. **Audit Log**: Setiap input suara dicatat siapa petugasnya dan kapan waktunya.
+
+---
+
+## 5. Fitur Teknis Tersedia
+- [x] **Privacy DPT**: Penghapusan NIK dari database.
+- [x] **Counter Mode**: Pencatatan cepat dengan hotkeys keyboard.
+- [x] **Staff Identity**: Foto profil petugas pendukung akuntabilitas.
+- [x] **Smart Sync**: Sinkronisasi data warga dengan Google Sheets.
 
 ---
 **Panitia Pemilihan RT 12**  
 *Pelem Kidul, Baturetno, Bantul*
+*Januari 2026*
