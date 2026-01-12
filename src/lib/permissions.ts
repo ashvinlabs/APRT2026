@@ -65,6 +65,7 @@ export function hasPermission(aggregated: Permissions, action: keyof Permissions
 export const ROLES = {
     SUPER_ADMIN: 'Super Admin',
     ADMINISTRATOR: 'Administrator',
-    CONTROLLER: 'Controller',
+    SUPERVISOR: 'Supervisor',        // Replaces Controller
+    TALLY_OFFICER: 'Tally Officer',  // New Role
     OFFICER: 'Officer',
 };

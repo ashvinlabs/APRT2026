@@ -44,43 +44,41 @@ interface Role {
 // All available permissions grouped by category
 const PERMISSION_GROUPS = [
     {
-        name: 'Sistem & Keamanan',
+        name: 'Core System',
         permissions: [
-            { key: 'all' as keyof Permissions, label: 'Full Access', description: 'Akses sistem penuh (Super Admin)' },
-            { key: 'view_logs' as keyof Permissions, label: 'Lihat Aktivitas', description: 'Melihat log audit dan riwayat sistem' },
-            { key: 'manage_settings' as keyof Permissions, label: 'Pengaturan Sistem', description: 'Mengubah konfigurasi pemilihan' },
+            { key: 'all' as keyof Permissions, label: 'Full Access', description: 'Akses penuh ke seluruh sistem (Super Admin)' },
+            { key: 'manage_settings' as keyof Permissions, label: 'Manage Settings', description: 'Buka/Tutup Voting & Ubah Konfigurasi' },
+            { key: 'view_logs' as keyof Permissions, label: 'View Logs', description: 'Melihat Audit Trail & Aktivitas' },
         ]
     },
     {
-        name: 'Manajemen Tim',
+        name: 'User Management',
         permissions: [
-            { key: 'manage_staff' as keyof Permissions, label: 'Kelola Petugas', description: 'Menyetujui dan menghapus akun petugas' },
-            { key: 'manage_roles' as keyof Permissions, label: 'Kelola Peran', description: 'Membuat dan mengubah hak akses (Role)' },
+            { key: 'manage_staff' as keyof Permissions, label: 'Manage Staff', description: 'Approve & Edit User/Staff' },
+            { key: 'manage_roles' as keyof Permissions, label: 'Manage Roles', description: 'Mengubah struktur Role & Permission' },
         ]
     },
     {
-        name: 'Data Pemilih (DPT)',
+        name: 'Voter & Data',
         permissions: [
-            { key: 'manage_voters' as keyof Permissions, label: 'Kelola Pemilih', description: 'Tambah/Hapus data pemilih secara penuh' },
-            { key: 'edit_voters' as keyof Permissions, label: 'Edit Pemilih', description: 'Mengubah informasi detail pemilih' },
-            { key: 'manage_invitations' as keyof Permissions, label: 'Kelola Undangan', description: 'Generate kode dan cetak undangan' },
-            { key: 'export_data' as keyof Permissions, label: 'Ekspor Data', description: 'Download data ke CSV/Excel' },
+            { key: 'manage_voters' as keyof Permissions, label: 'Manage Voters', description: 'Edit Nama, Alamat, dan Data Pemilih' },
+            { key: 'manage_invitations' as keyof Permissions, label: 'Manage Invitations', description: 'Generate & Cetak (Reprint) Undangan' },
+            { key: 'export_data' as keyof Permissions, label: 'Export Data', description: 'Download CSV/Excel (Optional)' },
         ]
     },
     {
-        name: 'Operasional Pemilihan',
+        name: 'Election Operations',
         permissions: [
-            { key: 'check_in' as keyof Permissions, label: 'Check-In Pemilih', description: 'Scan QR dan verifikasi kehadiran' },
-            { key: 'manage_votes' as keyof Permissions, label: 'Input Perolehan', description: 'Mencatat suara masuk (Tally)' },
-            { key: 'undo_vote' as keyof Permissions, label: 'Batalkan Suara', description: 'Menghapus kesalahan input suara' },
-            { key: 'manage_candidates' as keyof Permissions, label: 'Kelola Kandidat', description: 'Tambah/Edit calon ketua' },
-            { key: 'view_dashboard' as keyof Permissions, label: 'Lihat Dashboard', description: 'Melihat visualisasi hasil real-time' },
+            { key: 'check_in' as keyof Permissions, label: 'Check-In Access', description: 'Scan QR Code di pintu masuk' },
+            { key: 'manage_votes' as keyof Permissions, label: 'Input Votes (Tally)', description: 'Hak akses input suara (Tombol 1-9)' },
+            { key: 'undo_vote' as keyof Permissions, label: 'Undo Vote', description: 'Hak akses menghapus suara terakhir' },
+            { key: 'view_dashboard' as keyof Permissions, label: 'View Live Dashboard', description: 'Melihat hasil perhitungan real-time' },
         ]
     }
 ];
 
 // Protected system roles that cannot be deleted
-const PROTECTED_ROLES = ['Super Admin', 'Administrator'];
+const PROTECTED_ROLES = ['Super Admin', 'Administrator', 'Supervisor', 'Tally Officer', 'Officer'];
 
 export default function RoleManager() {
     const { toast } = useToast();

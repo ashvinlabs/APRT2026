@@ -305,7 +305,7 @@ function InvitationContent() {
                   {/* Body Section */}
                   <div className="body-section">
                     <p className="opening">
-                      Dengan hormat, Kami mengundang Bapak/Ibu/Saudara/i untuk memilih ketua RT kita yang akan diadakan pada:
+                      Dengan hormat, Kami mengundang Bapak/Ibu/Saudara/i untuk hadir pada:
                     </p>
 
                     <div className="details-table">
@@ -320,6 +320,10 @@ function InvitationContent() {
                       <div className="detail-row">
                         <div className="detail-label">Waktu</div>
                         <div className="detail-value">: Jam {config?.start_time || '08:00'} - selesai</div>
+                      </div>
+                      <div className="detail-row">
+                        <div className="detail-label">Acara</div>
+                        <div className="detail-value">: <strong>Sarapan Bersama warga memilih Ketua RT 12</strong></div>
                       </div>
                     </div>
 

@@ -19,25 +19,28 @@ APRT2026 is an integrated E-Voting system designed for the RT 12 neighborhood el
 
 ## 3. Core Features
 
-### A. Voter Management (DPT)
-- **Centralized Registry**: A robust `voters` table managing NIK, address, and attendance status.
+### A. Voter Management (DPT) - Privacy First
+- **Centralized Registry**: A robust `voters` table where identity is managed via **Name & Address** (NIK has been removed for privacy compliance).
+- **Composite Identity**: Unique constraint on `(name, address)` to handle potential namesake residents at different locations.
 - **Smart Data Sync**: Bi-directional synchronization with Google Sheets and CSV import/export.
-- **Privacy First**: Public-facing DPT check masks sensitive data (NIK and Address).
-- **Unique Identification**: Every voter is assigned a unique `invitation_code`.
+- **Privacy First**: Public-facing DPT check masks Address and hides Invitation Codes unless authorized.
+- **Unique Identification**: Every voter is assigned a unique 6-character `invitation_code` generated deterministically.
 
 ### B. Invitation System
-- **Layout**: High-quality print layout (2 invitations per A4 page).
+- **Layout**: Official print layout (3 invitations per A4 page).
 - **QR Integration**: Each invitation includes a QR code containing the `invitation_code`.
-- **Formal Wording**: Traditional formal Indonesian invitation content.
+- **Automated Metadata**: Dates and locations are dynamically injected from the `settings` table.
 
-### C. Check-In & Voting
-- **Digital Check-In**: QR scanner used at the polling station to mark attendance (`is_present = true`).
-- **Electronic Ballot**: Secure voting terminal for authenticated staff to record votes for candidates.
-- **Prevention**: System prevents double voting and ensures only present voters can cast ballots.
+### C. Check-In & Presence
+- **Digital Check-In**: High-speed QR scanner for polling station entry.
+- **Lock Logic**: "Registration Lock" to prevent check-ins after the official window closes.
+- **DPT Monitoring**: Real-time tracking of presence percentage vs total registered voters.
 
-### D. Tallying & Visualization
-- **Live Dashboard**: Real-time visualization of voting progress and current standings.
-- **Tally Interface**: Dedicated screen for manual/digital entry of ballot counts.
+### D. Tallying & Safeguards
+- **Voting Safeguards**: Logic-level protection to ensure Total Votes <= Recorded Presence.
+- **Counter Mode**: Optimized keyboard-driven entry (Keys 1-9 for candidates, 0/X for invalid).
+- **Undo Capability**: Instant correction of the last recorded vote to prevent tallying drift.
+- **Live Dashboard**: Public visualization of "Suara Sah", "Suara Tidak Sah", and live standings.
 
 ---
 
@@ -63,12 +66,12 @@ Discord-style role management.
 The DPT (Daftar Pemilih Tetap).
 - `id`: UUID (PK)
 - `name`: TEXT
-- `nik`: TEXT (Masked in public views)
 - `address`: TEXT
-- `invitation_code`: TEXT (Unique)
+- `invitation_code`: TEXT (Unique, derived from name+address)
 - `is_present`: BOOLEAN
 - `present_at`: TIMESTAMPTZ
 - `updated_at`: TIMESTAMPTZ
+- **Constraint**: `voters_name_address_unique` UNIQUE(name, address)
 
 ### `candidates`
 - `id`: UUID (PK)
@@ -86,8 +89,10 @@ The actual ballot records.
 ### `audit_logs`
 - `id`: UUID (PK)
 - `action`: TEXT
+- `permission_group`: TEXT (e.g., 'voter_management', 'manage_votes')
 - `metadata`: JSONB
 - `staff_id`: UUID (FK)
+- `created_at`: TIMESTAMPTZ
 
 ---
 
