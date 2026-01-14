@@ -3,8 +3,10 @@ import PermissionGuard from '@/components/PermissionGuard';
 
 export default function VotersPage() {
     return (
-        <main>
-            <VoterManagement />
-        </main>
+        <PermissionGuard permission="view_voter_details">
+            <main>
+                <VoterManagement />
+            </main>
+        </PermissionGuard>
     );
 }

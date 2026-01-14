@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { CheckCircle2, XCircle, User, Clock, AlertTriangle, QrCode } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Lock } from 'lucide-react';
+import { logActivity } from '@/lib/logger';
 
 interface Voter {
     id: string;
@@ -64,7 +65,7 @@ export default function CheckInInterface() {
         return () => { supabase.removeChannel(sub); };
     });
 
-    async function handleScan(voterId: string) {
+    async function handleScan(voterId: string, capturedImage?: Blob) {
         if (processing) return;
 
         if (!isRegistrationOpen) {
@@ -126,6 +127,32 @@ export default function CheckInInterface() {
             }
 
             // Success!
+            let imageUrl: string | undefined = undefined;
+
+            // Upload image if captured
+            if (capturedImage) {
+                try {
+                    const fileName = `scan-${voter.id}-${Date.now()}.jpg`;
+                    const { data: uploadData, error: uploadError } = await supabase.storage
+                        .from('scan-captures')
+                        .upload(fileName, capturedImage, {
+                            contentType: 'image/jpeg',
+                            upsert: true
+                        });
+
+                    if (!uploadError) {
+                        const { data: { publicUrl } } = supabase.storage
+                            .from('scan-captures')
+                            .getPublicUrl(fileName);
+                        imageUrl = publicUrl;
+                    } else {
+                        console.error('Failed to upload scan capture:', uploadError);
+                    }
+                } catch (err) {
+                    console.error('Error uploading scan capture:', err);
+                }
+            }
+
             setResult({
                 success: true,
                 message: 'Check-in berhasil! Pemilih dapat mengambil surat suara.',
@@ -133,6 +160,14 @@ export default function CheckInInterface() {
             });
             addRecentCheckIn(voter.id, voter.name, true);
             playSuccessSound();
+
+            // Audit Log with detailed description
+            await logActivity('check-in', 'check_in', {
+                voter_name: voter.name,
+                voter_code: voter.invitation_code,
+                detail: `Scan undangan hadir Kode: ${voter.invitation_code} (${voter.name})`,
+                image_url: imageUrl
+            }, voter.id);
 
             // Auto-clear after 3 seconds
             setTimeout(() => setResult(null), 3000);
@@ -172,7 +207,7 @@ export default function CheckInInterface() {
     }
 
     return (
-        <PermissionGuard permission="mark_presence">
+        <PermissionGuard permission="check_in">
             <div className="px-2 py-8 md:p-8 max-w-6xl mx-auto">
                 {/* Header */}
                 <header className="mb-8">

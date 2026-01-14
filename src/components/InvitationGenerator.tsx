@@ -8,6 +8,8 @@ import { useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
+import { useUser } from './UserContext';
+import { logActivity } from '@/lib/logger';
 
 interface Voter {
   id: string;
@@ -17,6 +19,7 @@ interface Voter {
 }
 
 function InvitationContent() {
+  const { hasPermission } = useUser();
   const searchParams = useSearchParams();
   const [voters, setVoters] = useState<Voter[]>([]);
   const [loading, setLoading] = useState(true);
@@ -62,6 +65,8 @@ function InvitationContent() {
 
   const handlePrint = (mode: 'selected' | 'page') => {
     setPrintMode(mode);
+    const count = mode === 'selected' ? selectedIds.size : paginatedVoters.length;
+    logActivity('bulk_print_invitations', 'bulk_print_invitations', { count, mode });
     setTimeout(() => {
       window.print();
     }, 100);
@@ -117,28 +122,34 @@ function InvitationContent() {
           <p className="text-slate-500 font-medium mt-1">Generate format A4 (2 per halaman) untuk undangan resmi.</p>
         </div>
         <div className="flex gap-3">
-          <Button variant="outline" onClick={toggleSelectAll} className="rounded-2xl h-14 px-8 font-black no-print">
-            {selectedIds.size === filteredVoters.length ? 'Batal Pilih Semua' : 'Pilih Semua'}
-          </Button>
+          {hasPermission('bulk_print_invitations') && (
+            <Button variant="outline" onClick={toggleSelectAll} className="rounded-2xl h-14 px-8 font-black no-print">
+              {selectedIds.size === filteredVoters.length ? 'Batal Pilih Semua' : 'Pilih Semua'}
+            </Button>
+          )}
           <Button variant="outline" onClick={() => window.history.back()} className="rounded-2xl h-14 px-8 font-black">
             Kembali
           </Button>
-          <Button
-            onClick={() => handlePrint('selected')}
-            disabled={selectedIds.size === 0}
-            className="rounded-2xl h-14 px-8 font-black gap-2 shadow-xl shadow-primary/20 hover:scale-105 transition-all"
-          >
-            <Printer size={20} />
-            Cetak {selectedIds.size} Terpilih
-          </Button>
-          <Button
-            onClick={() => handlePrint('page')}
-            variant="outline"
-            className="rounded-2xl h-14 px-8 font-black gap-2 border-primary text-primary hover:bg-primary/5"
-          >
-            <Printer size={20} />
-            Cetak Hal. {currentPage}
-          </Button>
+          {hasPermission('bulk_print_invitations') && (
+            <>
+              <Button
+                onClick={() => handlePrint('selected')}
+                disabled={selectedIds.size === 0}
+                className="rounded-2xl h-14 px-8 font-black gap-2 shadow-xl shadow-primary/20 hover:scale-105 transition-all"
+              >
+                <Printer size={20} />
+                Cetak {selectedIds.size} Terpilih
+              </Button>
+              <Button
+                onClick={() => handlePrint('page')}
+                variant="outline"
+                className="rounded-2xl h-14 px-8 font-black gap-2 border-primary text-primary hover:bg-primary/5"
+              >
+                <Printer size={20} />
+                Cetak Hal. {currentPage}
+              </Button>
+            </>
+          )}
         </div>
       </header>
 
@@ -200,18 +211,21 @@ function InvitationContent() {
                   <span className="text-[10px] font-bold px-2 py-1 bg-primary/10 text-primary rounded-lg uppercase tracking-tight">
                     {voter.invitation_code}
                   </span>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setSelectedIds(new Set([voter.id]));
-                      setTimeout(window.print, 100);
-                    }}
-                    className="text-primary font-black hover:bg-primary/5 rounded-xl"
-                  >
-                    Cetak Saja
-                  </Button>
+                  {hasPermission('print_invitation') && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedIds(new Set([voter.id]));
+                        logActivity('print_invitation', 'print_invitation', { voter_name: voter.name }, voter.id);
+                        setTimeout(window.print, 100);
+                      }}
+                      className="text-primary font-black hover:bg-primary/5 rounded-xl"
+                    >
+                      Cetak Saja
+                    </Button>
+                  )}
                 </div>
               </div>
             ))}

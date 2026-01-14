@@ -4,20 +4,30 @@
  */
 export interface Permissions {
     all?: boolean;
+    // System
+    manage_settings?: boolean;
+    view_logs?: boolean;
+    // Team
     manage_staff?: boolean;
-    manage_roles?: boolean; // Role management
-    manage_voters?: boolean;
+    manage_roles?: boolean;
+    // Voters
+    add_voters?: boolean;
     edit_voters?: boolean;
+    delete_voters?: boolean;
+    import_voters?: boolean;
+    export_data?: boolean;
+    view_voter_details?: boolean;
+    manage_voters?: boolean; // Legacy/Catch-all
+    // Operations
+    check_in?: boolean;
+    mark_presence?: boolean;
+    uncheck_in?: boolean;
+    print_invitation?: boolean;
+    bulk_print_invitations?: boolean;
+    // Voting
     manage_votes?: boolean;
     undo_vote?: boolean;
-    view_logs?: boolean;
-    manage_settings?: boolean;
-    manage_candidates?: boolean;
-    manage_invitations?: boolean;
-    check_in?: boolean;
-    mark_presence?: boolean; // Alias for check_in usually
     view_dashboard?: boolean;
-    export_data?: boolean;
 }
 
 export interface Role {

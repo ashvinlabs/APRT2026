@@ -170,7 +170,14 @@ export default function UserManager() {
             alert('Gagal mengubah status: ' + error.message);
         } else {
             await fetchData();
-            await logActivity(!member.is_approved ? 'approve_staff' : 'reject_staff', 'manage_staff', { staff_name: member.name });
+            await logActivity(
+                !member.is_approved ? 'approve_staff' : 'reject_staff',
+                'manage_staff',
+                {
+                    staff_name: member.name,
+                    detail: !member.is_approved ? `Approve Staff: ${member.name}` : `Reject/Deactivate Staff: ${member.name}`
+                }
+            );
         }
         setUpdating(null);
     }
@@ -190,7 +197,11 @@ export default function UserManager() {
         // Refresh specific member
         const updatedRes = await fetchStaff();
         setStaff(updatedRes);
-        await logActivity('manage_roles', 'manage_roles', { staff_name: member.name, role_id: roleId });
+        await logActivity('manage_roles', 'manage_roles', {
+            staff_name: member.name,
+            role_id: roleId,
+            detail: `Ubah Role Staff: ${member.name}`
+        });
         setUpdating(null);
     }
 
@@ -208,7 +219,10 @@ export default function UserManager() {
 
         if (!error) {
             setStaff(prev => prev.filter(s => s.id !== member.id));
-            await logActivity('delete_voter', 'manage_staff', { staff_name: member.name });
+            await logActivity('delete_staff', 'manage_staff', {
+                staff_name: member.name,
+                detail: `Hapus Petugas: ${member.name}`
+            });
         }
         setUpdating(member.id);
     }
@@ -245,6 +259,11 @@ export default function UserManager() {
             setStaff(prev => prev.map(s => s.id === editingMember.id ? { ...s, photo_url: publicUrl } : s));
 
             alert('Foto profil berhasil diperbarui!');
+            await logActivity('update_staff', 'manage_staff', {
+                staff_name: editingMember.name,
+                field: 'photo',
+                detail: `Pembaruan Foto Profil: ${editingMember.name}`
+            });
         } catch (error: any) {
             console.error('Error uploading photo:', error);
             alert('Gagal mengunggah foto: ' + error.message);

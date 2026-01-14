@@ -61,18 +61,30 @@ const PERMISSION_GROUPS = [
     {
         name: 'Voter & Data',
         permissions: [
-            { key: 'manage_voters' as keyof Permissions, label: 'Manage Voters', description: 'Edit Nama, Alamat, dan Data Pemilih' },
-            { key: 'manage_invitations' as keyof Permissions, label: 'Manage Invitations', description: 'Generate & Cetak (Reprint) Undangan' },
-            { key: 'export_data' as keyof Permissions, label: 'Export Data', description: 'Download CSV/Excel (Optional)' },
+            { key: 'view_voter_details' as keyof Permissions, label: 'View Details', description: 'Lihat Alamat & Detail Warga' },
+            { key: 'add_voters' as keyof Permissions, label: 'Add Voters', description: 'Tambah warga baru manual' },
+            { key: 'edit_voters' as keyof Permissions, label: 'Edit Voters', description: 'Edit Nama & Alamat warga' },
+            { key: 'delete_voters' as keyof Permissions, label: 'Delete Voters', description: 'Hapus data warga dari DPT' },
+            { key: 'import_voters' as keyof Permissions, label: 'Import Data', description: 'Import CSV & Google Sheets' },
+            { key: 'export_data' as keyof Permissions, label: 'Export Data', description: 'Download CSV hasil pemilihan' },
         ]
     },
     {
         name: 'Election Operations',
         permissions: [
             { key: 'check_in' as keyof Permissions, label: 'Check-In Access', description: 'Scan QR Code di pintu masuk' },
-            { key: 'manage_votes' as keyof Permissions, label: 'Input Votes (Tally)', description: 'Hak akses input suara (Tombol 1-9)' },
+            { key: 'mark_presence' as keyof Permissions, label: 'Mark Presence', description: 'Tandai hadir manual di tabel' },
+            { key: 'uncheck_in' as keyof Permissions, label: 'Undo Presence', description: 'Membatalkan tanda kehadiran' },
+            { key: 'print_invitation' as keyof Permissions, label: 'Print Invitation', description: 'Cetak undangan satu persatu' },
+            { key: 'bulk_print_invitations' as keyof Permissions, label: 'Bulk Print', description: 'Cetak undangan masal (Bulk)' },
+        ]
+    },
+    {
+        name: 'Voting (Tally)',
+        permissions: [
+            { key: 'manage_votes' as keyof Permissions, label: 'Input Votes', description: 'Hak akses input suara (Tombol 1-9)' },
             { key: 'undo_vote' as keyof Permissions, label: 'Undo Vote', description: 'Hak akses menghapus suara terakhir' },
-            { key: 'view_dashboard' as keyof Permissions, label: 'View Live Dashboard', description: 'Melihat hasil perhitungan real-time' },
+            { key: 'view_dashboard' as keyof Permissions, label: 'View Results', description: 'Melihat hasil perhitungan real-time' },
         ]
     }
 ];

@@ -50,10 +50,10 @@ const menuItems: MenuItem[] = [
     { name: 'Beranda', icon: Home, href: '/' },
     { name: 'Dashboard', icon: LayoutDashboard, href: '/dashboard' },
     { name: 'Check-In', icon: UserCheck, href: '/panitia/check-in', permission: 'check_in' },
-    { name: 'Data Pemilih', icon: Users, href: '/panitia/voters', permission: 'manage_voters' },
+    { name: 'Data Pemilih', icon: Users, href: '/panitia/voters', permission: 'view_voter_details' },
     { name: 'Hitung Suara', icon: Vote, href: '/panitia/tally', permission: 'manage_votes' },
-    { name: 'Cetak Undangan', icon: Printer, href: '/panitia/invitations', permission: 'manage_invitations' },
-    { name: 'Manajemen Tim', icon: Users, href: '/panitia/staff', permission: 'view_logs' },
+    { name: 'Cetak Undangan', icon: Printer, href: '/panitia/invitations', permission: 'print_invitation' },
+    { name: 'Manajemen Tim', icon: Users, href: '/panitia/staff', permission: 'manage_staff' },
     { name: 'Pengaturan', icon: Settings, href: '/panitia/settings', permission: 'manage_settings' },
 ];
 
@@ -79,6 +79,12 @@ export default function Sidebar() {
         if (!user) {
             return item.href === '/' || item.name === 'Dashboard' || item.name === 'Data Pemilih';
         }
+
+        // Custom logic for invitation access (either single or bulk)
+        if (item.name === 'Cetak Undangan') {
+            return hasPermission('print_invitation') || hasPermission('bulk_print_invitations');
+        }
+
         if (item.permission) {
             return hasPermission(item.permission);
         }

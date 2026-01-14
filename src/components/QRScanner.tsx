@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 
 interface QRScannerProps {
-    onScanSuccess: (decodedText: string) => void;
+    onScanSuccess: (decodedText: string, capturedImage?: Blob) => void;
     onScanError?: (error: string) => void;
     disabled?: boolean;
 }
@@ -66,7 +66,11 @@ export default function QRScanner({ onScanSuccess, onScanError, disabled = false
                     // Success callback - only process once
                     if (!hasScannedRef.current) {
                         hasScannedRef.current = true;
-                        onScanSuccess(decodedText);
+
+                        // Capture frame immediately
+                        captureFrame(decodedText).then((blob) => {
+                            onScanSuccess(decodedText, blob || undefined);
+                        });
 
                         // Stop scanner after successful scan
                         setTimeout(() => {
@@ -110,6 +114,42 @@ export default function QRScanner({ onScanSuccess, onScanError, disabled = false
         } catch (err) {
             console.error('Error stopping scanner:', err);
             setIsScanning(false);
+        }
+    };
+
+    const captureFrame = async (code: string): Promise<Blob | null> => {
+        try {
+            const video = document.querySelector('#qr-reader video') as HTMLVideoElement;
+            if (!video) return null;
+
+            const canvas = document.createElement('canvas');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            const ctx = canvas.getContext('2d');
+            if (!ctx) return null;
+
+            // Draw current frame
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+            // Add Watermark Background (Semi-transparent black bar)
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+            ctx.fillRect(0, canvas.height - 60, canvas.width, 60);
+
+            // Add Text (Timestamp & Code)
+            ctx.font = 'bold 20px Arial';
+            ctx.fillStyle = 'white';
+            const timestamp = new Date().toLocaleString('id-ID', {
+                day: '2-digit', month: 'short', year: 'numeric',
+                hour: '2-digit', minute: '2-digit', second: '2-digit'
+            });
+            ctx.fillText(`${timestamp} | KODE: ${code}`, 20, canvas.height - 25);
+
+            return new Promise((resolve) => {
+                canvas.toBlob((blob) => resolve(blob), 'image/jpeg', 0.8);
+            });
+        } catch (err) {
+            console.error('Failed to capture frame:', err);
+            return null;
         }
     };
 

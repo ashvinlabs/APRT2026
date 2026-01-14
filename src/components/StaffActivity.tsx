@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
-import { Shield, User, Loader2, History, Filter, RefreshCw, Clock } from 'lucide-react';
+import { Shield, User, Loader2, History, Filter, RefreshCw, Clock, Camera } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -121,15 +121,15 @@ export default function StaffActivity() {
                         <Table>
                             <TableHeader className="bg-slate-50/50">
                                 <TableRow className="hover:bg-transparent border-slate-100">
-                                    <TableHead className="w-[200px] h-14 font-black uppercase text-[10px] tracking-widest text-slate-400 pl-8">Waktu Aktivitias</TableHead>
-                                    <TableHead className="h-14 font-black uppercase text-[10px] tracking-widest text-slate-400">Aktivitas</TableHead>
-                                    <TableHead className="h-14 font-black uppercase text-[10px] tracking-widest text-slate-400">Target Warga</TableHead>
-                                    <TableHead className="h-14 font-black uppercase text-[10px] tracking-widest text-slate-400 pr-8">Petugas/Staff</TableHead>
+                                    <TableHead className="w-[180px] h-14 font-black uppercase text-[10px] tracking-widest text-slate-400 pl-8">Waktu Aktivitias</TableHead>
+                                    <TableHead className="w-[200px] h-14 font-black uppercase text-[10px] tracking-widest text-slate-400">Petugas / Staff</TableHead>
+                                    <TableHead className="w-[180px] h-14 font-black uppercase text-[10px] tracking-widest text-slate-400">Permission</TableHead>
+                                    <TableHead className="h-14 font-black uppercase text-[10px] tracking-widest text-slate-400 pr-8">Detail Aktivitas</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {logs.map((log) => (
-                                    <TableRow key={log.id} className="group border-slate-50 hover:bg-slate-50/50 transition-colors">
+                                {logs.map((log: any) => (
+                                    <TableRow key={log.id} className="group border-slate-50 hover:bg-slate-50/50 transition-colors text-sm font-medium">
                                         <TableCell className="pl-8 py-5">
                                             <div className="flex flex-col">
                                                 <span className="font-bold text-slate-900">{new Date(log.created_at).toLocaleDateString('id-ID', { day: '2-digit', month: 'short' })}</span>
@@ -140,36 +140,42 @@ export default function StaffActivity() {
                                             </div>
                                         </TableCell>
                                         <TableCell>
-                                            <div className="flex flex-col gap-1">
-                                                <Badge className={cn(
-                                                    "w-fit px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border-none shadow-sm",
-                                                    log.action === 'check-in' || log.action === 'add_voter' || log.action === 'approve_staff'
-                                                        ? "bg-emerald-100 text-emerald-700"
-                                                        : log.action === 'undo_vote' || log.action === 'reject_staff' || log.action === 'delete_voter'
-                                                            ? "bg-rose-100 text-rose-700"
-                                                            : "bg-blue-100 text-blue-700"
-                                                )}>
-                                                    {log.action.replace(/_/g, ' ')}
-                                                </Badge>
-                                                <span className="text-[9px] font-bold text-slate-400 pl-1 uppercase tracking-tighter">
-                                                    Area: {log.permission_group?.replace(/_/g, ' ') || 'General'}
-                                                </span>
+                                            <div className="flex items-center gap-2">
+                                                <div className="w-8 h-8 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-500 group-hover:bg-indigo-100 transition-colors">
+                                                    <User size={14} />
+                                                </div>
+                                                <div className="flex flex-col">
+                                                    <span className="font-bold text-slate-800">{log.staff?.name || 'System'}</span>
+                                                    <span className="text-[10px] text-slate-400 font-medium">ID: {log.staff_id.substring(0, 8)}</span>
+                                                </div>
                                             </div>
                                         </TableCell>
                                         <TableCell>
-                                            <div className="flex items-center gap-3">
-                                                <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-slate-400 group-hover:bg-primary/10 group-hover:text-primary transition-all duration-300">
-                                                    <User size={14} />
-                                                </div>
-                                                <span className="font-bold text-slate-700 tracking-tight">{log.voters?.name || '---'}</span>
-                                            </div>
+                                            <Badge variant="outline" className="px-3 py-0.5 rounded-lg border-slate-200 text-slate-500 text-[10px] font-bold uppercase tracking-tight bg-slate-50">
+                                                {log.permission_group?.replace(/_/g, ' ')}
+                                            </Badge>
                                         </TableCell>
                                         <TableCell className="pr-8">
-                                            <div className="flex items-center gap-2">
-                                                <div className="w-6 h-6 rounded-full bg-slate-200 flex items-center justify-center">
-                                                    <Shield size={12} className="text-slate-500" />
+                                            <div className="flex items-center justify-between gap-4">
+                                                <div className="flex flex-col">
+                                                    <span className="text-slate-700 font-bold leading-tight">
+                                                        {log.metadata?.detail || log.action.replace(/_/g, ' ')}
+                                                    </span>
+                                                    {log.voters?.name && !log.metadata?.detail && (
+                                                        <span className="text-[10px] text-slate-400 font-medium">Target: {log.voters.name}</span>
+                                                    )}
                                                 </div>
-                                                <span className="text-xs font-bold text-slate-400 italic">ID: {log.staff_id.substring(0, 8)}...</span>
+                                                {log.metadata?.image_url && (
+                                                    <a
+                                                        href={log.metadata.image_url}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="flex items-center gap-1.5 px-3 py-1.5 bg-primary/10 text-primary rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-primary/20 transition-all shrink-0"
+                                                    >
+                                                        <Camera size={12} />
+                                                        Lihat Capture
+                                                    </a>
+                                                )}
                                             </div>
                                         </TableCell>
                                     </TableRow>

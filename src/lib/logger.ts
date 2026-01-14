@@ -14,10 +14,14 @@ export type LogAction =
     | 'update_settings'
     | 'approve_staff'
     | 'reject_staff'
+    | 'delete_staff'
+    | 'update_staff'
     | 'manage_roles'
     | 'manage_candidates'
     | 'export_data'
-    | 'update_profile';
+    | 'update_profile'
+    | 'print_invitation'
+    | 'bulk_print_invitations';
 
 export type LogGroup = keyof Permissions;
 
@@ -30,10 +34,14 @@ export async function logActivity(
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
+    // Ensure metadata includes a 'detail' string if we want specific descriptions
     const { error } = await supabase.from('audit_logs').insert({
         action,
         permission_group: group,
-        metadata,
+        metadata: {
+            ...metadata,
+            // If details are generated in the caller, they stay in metadata
+        },
         staff_id: user.id,
         voter_id: voterId
     });

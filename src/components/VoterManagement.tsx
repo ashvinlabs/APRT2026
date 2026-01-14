@@ -59,7 +59,7 @@ export default function VoterManagement() {
     const [itemsPerPage, setItemsPerPage] = useState(24);
 
     // Determine if user can see full data (for privacy masking)
-    const canSeeFullData = user ? hasPermission('manage_voters') : false;
+    const canSeeFullData = user ? hasPermission('view_voter_details') : false;
 
     useEffect(() => {
         setMounted(true);
@@ -125,7 +125,10 @@ export default function VoterManagement() {
             alert('Gagal menghapus data: ' + error.message);
         } else {
             setVoters(voters.filter(v => v.id !== voterId));
-            await logActivity('delete_voter', 'manage_voters', { name });
+            await logActivity('delete_voter', 'delete_voters', {
+                detail: `Hapus data warga: ${name}`,
+                name
+            });
         }
     }
 
@@ -143,10 +146,17 @@ export default function VoterManagement() {
             setVoters(voters.map(v => v.id === voterId ? { ...v, is_present: !currentStatus } : v));
 
             // Audit log
+            const voter = voters.find(v => v.id === voterId);
             await logActivity(
                 !currentStatus ? 'check-in' : 'uncheck-in',
-                'manage_voters',
-                { voter_name: voters.find(v => v.id === voterId)?.name },
+                !currentStatus ? 'mark_presence' : 'uncheck_in',
+                {
+                    voter_name: voter?.name,
+                    voter_code: voter?.invitation_code,
+                    detail: !currentStatus
+                        ? `Tandai Kehadiran Pemilih: ${voter?.name} Kode: ${voter?.invitation_code}`
+                        : `Batalkan Kehadiran Pemilih: ${voter?.name} Kode: ${voter?.invitation_code}`
+                },
                 voterId
             );
         }
@@ -173,7 +183,10 @@ export default function VoterManagement() {
             setIsAddModalOpen(false);
             setNewVoter({ name: '', address: '' });
             fetchVoters();
-            await logActivity('add_voter', 'manage_voters', { name: newVoter.name });
+            await logActivity('add_voter', 'add_voters', {
+                detail: `Tambah warga baru: ${newVoter.name}`,
+                name: newVoter.name
+            });
         }
     }
 
@@ -195,7 +208,10 @@ export default function VoterManagement() {
             setIsEditModalOpen(false);
             setEditingVoter(null);
             fetchVoters();
-            await logActivity('update_voter', 'edit_voters', { name: editingVoter.name }, editingVoter.id);
+            await logActivity('update_voter', 'edit_voters', {
+                detail: `Pembaruan Data DPT: ${editingVoter.name}`,
+                name: editingVoter.name
+            }, editingVoter.id);
         }
     }
 
@@ -259,29 +275,29 @@ export default function VoterManagement() {
                     </p>
                 </div>
                 <div className="flex flex-wrap gap-2 md:gap-3 w-full md:w-auto justify-center">
-                    {user && (
+                    {user && hasPermission('import_voters') && (
                         <Button variant="outline" onClick={() => setIsSyncModalOpen(true)} className="rounded-2xl h-10 md:h-12 px-4 md:px-6 font-bold shadow-sm hover:bg-slate-50 transition-all border-slate-200 text-xs md:text-sm">
                             <Cloud className="mr-2 h-4 w-4 md:h-5 md:w-5 text-blue-500" />
                             Google Sheets
                         </Button>
                     )}
-                    {user && (
+                    {user && hasPermission('export_data') && (
                         <Button variant="outline" onClick={exportToCSV} className="rounded-2xl h-10 md:h-12 px-4 md:px-6 font-bold shadow-sm hover:bg-slate-50 transition-all border-slate-200 text-xs md:text-sm">
                             <Download className="mr-2 h-4 w-4 md:h-5 md:w-5 text-emerald-500" />
                             Export CSV
                         </Button>
                     )}
-                    {user && (hasPermission('manage_voters') || hasPermission('edit_voters')) && (
-                        <>
-                            <Button variant="outline" onClick={() => setIsImportModalOpen(true)} className="rounded-2xl h-10 md:h-12 px-4 md:px-6 font-bold shadow-sm hover:bg-slate-50 transition-all border-slate-200 text-xs md:text-sm">
-                                <FileUp className="mr-2 h-4 w-4 md:h-5 md:w-5 text-indigo-500" />
-                                Import CSV
-                            </Button>
-                            <Button onClick={() => setIsAddModalOpen(true)} className="rounded-2xl h-10 md:h-12 px-4 md:px-6 font-black shadow-lg shadow-primary/20 hover:scale-[1.02] transition-all text-xs md:text-sm">
-                                <UserPlus className="mr-2 h-4 w-4 md:h-5 md:w-5" />
-                                Tambah Manual
-                            </Button>
-                        </>
+                    {user && hasPermission('import_voters') && (
+                        <Button variant="outline" onClick={() => setIsImportModalOpen(true)} className="rounded-2xl h-10 md:h-12 px-4 md:px-6 font-bold shadow-sm hover:bg-slate-50 transition-all border-slate-200 text-xs md:text-sm">
+                            <FileUp className="mr-2 h-4 w-4 md:h-5 md:w-5 text-indigo-500" />
+                            Import CSV
+                        </Button>
+                    )}
+                    {user && hasPermission('add_voters') && (
+                        <Button onClick={() => setIsAddModalOpen(true)} className="rounded-2xl h-10 md:h-12 px-4 md:px-6 font-black shadow-lg shadow-primary/20 hover:scale-[1.02] transition-all text-xs md:text-sm">
+                            <UserPlus className="mr-2 h-4 w-4 md:h-5 md:w-5" />
+                            Tambah Manual
+                        </Button>
                     )}
                 </div>
             </header>
@@ -358,26 +374,26 @@ export default function VoterManagement() {
                                             </div>
                                         </div>
                                         <div className="flex items-center gap-1">
-                                            {user && hasPermission('manage_voters') && (
-                                                <>
-                                                    <button
-                                                        onClick={() => {
-                                                            setEditingVoter(voter);
-                                                            setIsEditModalOpen(true);
-                                                        }}
-                                                        className="p-2 text-slate-300 hover:text-blue-500 hover:bg-blue-50 rounded-lg transition-all"
-                                                        title="Edit Warga"
-                                                    >
-                                                        <Pencil size={16} />
-                                                    </button>
-                                                    <button
-                                                        onClick={() => deleteVoter(voter.id, voter.name)}
-                                                        className="p-2 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-all"
-                                                        title="Hapus Warga"
-                                                    >
-                                                        <Trash2 size={16} />
-                                                    </button>
-                                                </>
+                                            {user && hasPermission('edit_voters') && (
+                                                <button
+                                                    onClick={() => {
+                                                        setEditingVoter(voter);
+                                                        setIsEditModalOpen(true);
+                                                    }}
+                                                    className="p-2 text-slate-300 hover:text-blue-500 hover:bg-blue-50 rounded-lg transition-all"
+                                                    title="Edit Warga"
+                                                >
+                                                    <Pencil size={16} />
+                                                </button>
+                                            )}
+                                            {user && hasPermission('delete_voters') && (
+                                                <button
+                                                    onClick={() => deleteVoter(voter.id, voter.name)}
+                                                    className="p-2 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-all"
+                                                    title="Hapus Warga"
+                                                >
+                                                    <Trash2 size={16} />
+                                                </button>
                                             )}
                                             <Badge className={cn(
                                                 "px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ml-1",
@@ -404,14 +420,15 @@ export default function VoterManagement() {
                                             {isRegistrationOpen && (
                                                 <Button
                                                     variant={voter.is_present ? "outline" : "default"}
-                                                    disabled={voter.is_present && !hasPermission('manage_voters')} // Officers can't uncheck
+                                                    disabled={voter.is_present ? !hasPermission('uncheck_in') : !hasPermission('mark_presence')}
                                                     onClick={() => togglePresence(voter.id, voter.is_present)}
                                                     className={cn(
                                                         "rounded-2xl font-black text-xs uppercase tracking-widest h-12 transition-all",
                                                         voter.is_present
                                                             ? "border-rose-200 text-rose-500 hover:bg-rose-50 hover:text-rose-600"
                                                             : "bg-emerald-600 hover:bg-emerald-700 shadow-lg shadow-emerald-200 hover:scale-105",
-                                                        voter.is_present && !hasPermission('manage_voters') && "opacity-50 cursor-not-allowed group-hover:opacity-50 grayscale"
+                                                        voter.is_present && !hasPermission('uncheck_in') && "opacity-50 cursor-not-allowed group-hover:opacity-50 grayscale",
+                                                        !voter.is_present && !hasPermission('mark_presence') && "opacity-50 cursor-not-allowed group-hover:opacity-50 grayscale"
                                                     )}
                                                 >
                                                     {voter.is_present ? (
@@ -421,7 +438,7 @@ export default function VoterManagement() {
                                                     )}
                                                 </Button>
                                             )}
-                                            {hasPermission('manage_invitations') ? (
+                                            {hasPermission('print_invitation') ? (
                                                 <Button
                                                     variant="secondary"
                                                     onClick={() => {
