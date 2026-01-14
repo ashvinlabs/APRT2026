@@ -237,7 +237,7 @@ export default function VoterManagement() {
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
-        logActivity('export_data', 'view_logs', { count: voters.length });
+        logActivity('export_data', 'export_data', { detail: `Export CSV: ${voters.length} data rows` });
     };
 
     const filteredVoters = voters.filter(v =>

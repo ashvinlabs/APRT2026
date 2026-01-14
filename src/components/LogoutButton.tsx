@@ -6,6 +6,7 @@ import { LogOut, Loader2 } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { logActivity } from '@/lib/logger';
 
 export default function LogoutButton({ hideText = false }: { hideText?: boolean }) {
     const router = useRouter();
@@ -14,6 +15,9 @@ export default function LogoutButton({ hideText = false }: { hideText?: boolean 
     async function handleLogout() {
         if (!confirm('Apakah Anda yakin ingin keluar dari sistem?')) return;
         setLoading(true);
+        await logActivity('logout', 'system', {
+            detail: 'Petugas Logout'
+        });
         await supabase.auth.signOut();
         router.push('/login');
         router.refresh();

@@ -163,7 +163,11 @@ export default function TallyInterface() {
         } else {
             const name = candidateId ? candidates.find(c => c.id === candidateId)?.name || 'Kandidat' : 'Suara Tidak Sah';
             showNotification(name, isValid ? 'valid' : 'invalid');
-            await logActivity('record_vote', 'manage_votes', { candidate_name: name, is_valid: isValid });
+            await logActivity('record_vote', 'manage_votes', {
+                detail: `Input Suara: ${name} (${isValid ? 'Sah' : 'Tidak Sah'})`,
+                candidate_name: name,
+                is_valid: isValid
+            });
         }
         setRecording(null);
     }
@@ -182,7 +186,10 @@ export default function TallyInterface() {
         if (last && !error) {
             await supabase.from('votes').delete().eq('id', last.id);
             showNotification('Pembatalan Suara', 'undo');
-            await logActivity('undo_vote', 'undo_vote', { vote_id: last.id });
+            await logActivity('undo_vote', 'undo_vote', {
+                detail: 'Pembatalan Suara Terakhir',
+                vote_id: last.id
+            });
         }
     }
 

@@ -20,6 +20,7 @@ import {
     Image as ImageIcon,
     Plus
 } from 'lucide-react';
+import { logActivity } from '@/lib/logger';
 
 interface Candidate {
     id: string;
@@ -82,20 +83,32 @@ export default function SettingsManager() {
         };
         const { data, error } = await supabase.from('candidates').insert(newCandidate).select();
         if (error) setMessage({ type: 'error', text: 'Gagal menambah kandidat: ' + error.message });
-        else if (data) setCandidates([...candidates, data[0]]);
+        else if (data) {
+            setCandidates([...candidates, data[0]]);
+            logActivity('add_candidate', 'manage_candidates', { detail: `Tambah Kandidat: ${newCandidate.name}` });
+        }
     }
 
     async function updateCandidate(id: string, updates: Partial<Candidate>) {
         const { error } = await supabase.from('candidates').update(updates).eq('id', id);
         if (error) setMessage({ type: 'error', text: 'Gagal update kandidat: ' + error.message });
-        else setCandidates(prev => prev.map(c => c.id === id ? { ...c, ...updates } : c));
+        else {
+            setCandidates(prev => prev.map(c => c.id === id ? { ...c, ...updates } : c));
+            if (updates.name) {
+                logActivity('update_candidate', 'manage_candidates', { detail: `Update Nama Kandidat: ${updates.name}` });
+            }
+        }
     }
 
     async function deleteCandidate(id: string) {
         if (!confirm('Hapus kandidat ini?')) return;
+        const candidateName = candidates.find(c => c.id === id)?.name || 'Unknown';
         const { error } = await supabase.from('candidates').delete().eq('id', id);
         if (error) setMessage({ type: 'error', text: 'Gagal hapus kandidat: ' + error.message });
-        else setCandidates(candidates.filter(c => c.id !== id));
+        else {
+            setCandidates(candidates.filter(c => c.id !== id));
+            logActivity('delete_candidate', 'manage_candidates', { detail: `Hapus Kandidat: ${candidateName}` });
+        }
     }
 
     async function handlePhotoUpload(candidateId: string, file: File) {
@@ -123,6 +136,7 @@ export default function SettingsManager() {
             .getPublicUrl(filePath);
 
         await updateCandidate(candidateId, { photo_url: publicUrl + '?t=' + Date.now() });
+        logActivity('upload_candidate_photo', 'manage_candidates', { detail: `Upload Foto Kandidat ID: ${candidateId}` });
         setSaving(false);
         fetchCandidates(); // Refresh to ensure everything is synced
     }
@@ -198,6 +212,7 @@ export default function SettingsManager() {
             setMessage({ type: 'error', text: 'Gagal menyimpan pengaturan: ' + error.message });
         } else {
             setMessage({ type: 'success', text: 'Pengaturan berhasil diperbarui!' });
+            await logActivity('update_settings', 'manage_settings', { detail: 'Update Konfigurasi Pemilihan' });
             setTimeout(() => setMessage(null), 3000);
         }
         setSaving(false);

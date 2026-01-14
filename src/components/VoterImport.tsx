@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { Upload, X, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
+import { logActivity } from '@/lib/logger';
 
 export default function VoterImport({ onComplete }: { onComplete: () => void }) {
     const [file, setFile] = useState<File | null>(null);
@@ -59,6 +60,9 @@ export default function VoterImport({ onComplete }: { onComplete: () => void }) 
                 setMessage({ type: 'error', text: 'Gagal mengimpor data: ' + error.message });
             } else {
                 setMessage({ type: 'success', text: `Berhasil sinkronisasi ${voters.length} data pemilih!` });
+                await logActivity('import_voters', 'add_voters', {
+                    detail: `Import CSV: ${voters.length} data diproses`
+                });
                 setFile(null);
                 setTimeout(onComplete, 1500);
             }

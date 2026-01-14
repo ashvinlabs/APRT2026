@@ -2,6 +2,8 @@ import { supabase } from './supabase';
 import { Permissions } from './permissions';
 
 export type LogAction =
+    | 'login'
+    | 'logout'
     | 'check-in'
     | 'uncheck-in'
     | 'add_voter'
@@ -12,18 +14,23 @@ export type LogAction =
     | 'record_vote'
     | 'undo_vote'
     | 'update_settings'
+    | 'add_candidate'
+    | 'update_candidate'
+    | 'delete_candidate'
+    | 'upload_candidate_photo'
+    | 'reorder_candidates'
     | 'approve_staff'
     | 'reject_staff'
     | 'delete_staff'
     | 'update_staff'
     | 'manage_roles'
-    | 'manage_candidates'
     | 'export_data'
     | 'update_profile'
     | 'print_invitation'
-    | 'bulk_print_invitations';
+    | 'bulk_print_invitations'
+    | 'manual_cleanup';
 
-export type LogGroup = keyof Permissions;
+export type LogGroup = keyof Permissions | 'system';
 
 export async function logActivity(
     action: LogAction,

@@ -7,6 +7,7 @@ export interface Permissions {
     // System
     manage_settings?: boolean;
     view_logs?: boolean;
+    manage_candidates?: boolean;
     // Team
     manage_staff?: boolean;
     manage_roles?: boolean;

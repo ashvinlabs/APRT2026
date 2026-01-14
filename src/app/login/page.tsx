@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
+import { logActivity } from '@/lib/logger';
 import { LogIn, Loader2, ShieldAlert, CheckCircle2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -37,6 +38,9 @@ export default function LoginPage() {
             );
             setLoading(false);
         } else {
+            await logActivity('login', 'system', {
+                detail: `Petugas Login (${email})`
+            });
             router.push('/panitia/voters');
             router.refresh();
         }

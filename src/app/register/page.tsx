@@ -42,7 +42,22 @@ export default function RegisterPage() {
             // 2. The staff record is now automatically created by the 'handle_new_staff' 
             // trigger in the database. No manual insert needed here to avoid duplicate key errors.
 
-            // 3. Success! Redirect to pending page
+            // 3. Trigger notification to admins manually as a fallback/ensure delivery
+            try {
+                await supabase.functions.invoke('notify-admin-registration', {
+                    body: {
+                        record: {
+                            name: name,
+                            email: email
+                        }
+                    }
+                });
+            } catch (notifyError) {
+                console.error('Failed to send admin notification:', notifyError);
+                // We don't block registration success if notification fails
+            }
+
+            // 4. Success! Redirect to pending page
             router.push('/pending-approval');
         } catch (err: any) {
             console.error('Registration error:', err);

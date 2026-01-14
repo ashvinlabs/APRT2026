@@ -71,7 +71,7 @@ export default function ProfileEditModal({ isOpen, onClose }: ProfileEditModalPr
                 title: 'Berhasil',
                 description: 'Foto profil berhasil diperbarui',
             });
-            logActivity('update_profile', 'manage_staff', { info: 'Self profile photo update' });
+            logActivity('update_profile', 'manage_staff', { detail: 'Update Foto Profil Sendiri' });
         } catch (error: any) {
             console.error('Error uploading photo:', error);
             toast({
@@ -102,7 +102,7 @@ export default function ProfileEditModal({ isOpen, onClose }: ProfileEditModalPr
                 title: 'Berhasil',
                 description: 'Profil berhasil diperbarui',
             });
-            logActivity('update_profile', 'manage_staff', { info: 'Self profile name update' });
+            logActivity('update_profile', 'manage_staff', { detail: `Update Nama Profil: ${name.trim()}` });
             onClose();
         } catch (error: any) {
             toast({
