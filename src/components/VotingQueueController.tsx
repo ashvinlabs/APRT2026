@@ -143,16 +143,18 @@ export default function VotingQueueController() {
 
         if (newSkipCount < 3 && waitingQueue.length > 0) {
             // Find the 9th person in line (or last if <9) to insert after
-            // Actually, we manipulate the timestamp to be slightly after the 9th person
-            // If we just use NOW, they go to end. 
-            // So we need to find the timestamp of the 9th person and add 1 second.
-            // Queue is sorted by timestamp ASC.
             const bumpIndex = Math.min(waitingQueue.length - 1, 8);
             const targetVoter = waitingQueue[bumpIndex];
             if (targetVoter && targetVoter.queue_timestamp) {
                 const t = new Date(targetVoter.queue_timestamp).getTime();
                 newTimestamp = new Date(t + 1000).toISOString(); // +1s after them
             }
+        } else if (newSkipCount >= 3) {
+            // Penalty 3: Move to very end (after everyone else)
+            // Use "Tomorrow" to ensure they are behind any new check-ins today
+            const tomorrow = new Date();
+            tomorrow.setDate(tomorrow.getDate() + 1);
+            newTimestamp = tomorrow.toISOString();
         }
 
         const { error } = await supabase.from('voters').update({

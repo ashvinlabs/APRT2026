@@ -1,54 +1,56 @@
 # Panduan Operasional Pemilihan Semi-Digital RT 12 (V.2026)
 
-Dokumen ini merupakan acuan resmi pelaksanaan pemilihan Ketua RT 12 dengan sistem **Semi-Digital**. Sistem ini menggabungkan kecepatan pencatatan digital dengan validitas fisik surat suara.
+## 1. Definisi & Konsep
+- **DPT (Daftar Pemilih Tetap)**: Seluruh warga yang terdaftar dan berhak memilih.
+- **Kehadiran (Attendance)**: Pemilih DPT yang hadir, melakukan check-in, dan mendapatkan hak suara.
+- **Suara Masuk (Actual Votes)**: Jumlah surat suara yang berada di dalam kotak suara (pemilih yang hadir DAN mencoblos).
 
----
+> **PENTING**:
+> *   Hanya yang **Check-In** yang bisa memilih.
+> *   Tidak semua yang Check-In pasti memilih (bisa pulang sebelum dipanggil/no-show).
+> *   Hanya surat suara di dalam kotak yang dihitung.
 
-## 1. Prinsip Dasar
-- **Privasi**: Data pemilih (DPT) hanya mencakup **Nama** dan **Alamat**. NIK tidak lagi digunakan.
-- **Validitas**: Surat suara fisik tetap menjadi bukti utama pemilihan.
-- **Efisiensi**: Pencatatan kehadiran dan perhitungan suara dilakukan secara digital untuk hasil real-time.
+## 2. Alur Pelaksanaan (Timeline)
 
----
+### 08:00 - Pendaftaran Dibuka (Registration OPEN)
+1.  **Setting**: `Registration = OPEN`, `Voting/Tally = CLOSED`.
+2.  **Aktivitas**:
+    -   Pemilih datang, scanning QR Code / Check-in manual.
+    -   Sistem mencatat `is_present = true`.
+    -   **Display Utama**: Menampilkan **Daftar Antrian** (Voting Queue) secara real-time.
 
-## 2. Alur Pelaksanaan (Hari H)
+### 08:30 - Pemungutan Suara Dimulai (Casting Votes)
+1.  **Setting**: `Registration = OPEN`, `Voting/Tally = CLOSED`.
+2.  **Sistem Antrian (Queue)**:
+    -   Pemilih dipanggil dalam **Kelompok 3 Orang** (sesuai jumlah bilik).
+    -   Pem panggilan berdasarkan urutan kedatangan (Check-in time).
+3.  **Proses**:
+    -   Dipanggil -> Ambil Surat Suara -> Bilik -> Kotak Suara -> Tinta -> Pulang.
+4.  **Penanganan Ketidakhadiran (No-Show)**:
+    -   Jika dipanggil tapi tidak ada:
+        -   **Sanksi 1-2**: Dipindahkan mundur **3 Kelompok** (approx. 9 antrian).
+        -   **Sanksi 3**: Dipindahkan ke **Urutan Terakhir** (setelah semua yang hadir selesai).
 
-### Fase A: Pendaftaran & Check-In (Digital)
-1. **Verifikasi**: Pemilih datang membawa undangan (fisik/digital) dan KTP untuk verifikasi nama.
-2. **Scanning**: Petugas melakukan scanning QR Code pada undangan.
-3. **Catat Kehadiran**: Sistem mencatat pemilih sebagai "Hadir" (`is_present = true`). 
-4. **Distribusi Fisik**: Pemilih menerima **Surat Suara Fisik** yang telah diparaf petugas.
+### 10:30 (atau Selesai) - Penutupan & Penghitungan (Counting Phase)
+1.  **Syarat**: Semua pemilih yang hadir sudah dipanggil.
+2.  **Transisi**:
+    -   Petugas merubah status: **TUTUP PENDAFTARAN**.
+    -   Petugas merubah status: **BUKA VOTING (TALLY)**.
+3.  **Display Utama**: Otomatis berubah menampilkan **Live Tally / Hasil Perhitungan**.
+4.  **Proses Penghitungan**:
+    -   Buka kotak suara.
+    -   Baca surat suara satu per satu.
+    -   Input ke sistem (Operator) & Catat di Plano (Manual).
+    -   Validasi saksi.
 
-### Fase B: Pemungutan Suara (Fisik)
-1. **Bilik Suara**: Pemilih mencoblos pilihan secara rahasia di bilik suara.
-2. **Kotak Suara**: Pemilih memasukkan surat suara ke kotak suara fisik.
-3. **Tanda Jari**: Pemilih mencelupkan jari ke tinta tanda telah memilih.
-
-### Fase C: Penutupan Pendaftaran & Voting
-1. **Closing Check-In**: Pendaftaran ditutup pada waktu yang ditentukan atau setelah DPT hadir semua.
-2. **Closing Voting**: Proses pencoblosan dinyatakan selesai.
-
-### Fase D: Penghitungan Suara (Semi-Digital)
-Proses ini dilakukan secara terbuka di depan saksi:
-1. **Membuka Kotak**: Petugas membuka kotak suara fisik.
-2. **Pembacaan**: Satu petugas membacakan pilihan di surat suara fisik satu per satu.
-3. **Pencatatan Ganda**: 
-   - **Manual**: Dicatat pada papan/kertas yang tersedia.
-   - **Digital**: Petugas operator laptop menekan tombol input pada sistem untuk setiap suara yang dibaca (Kandidat X, atau Suara Tidak Sah).
-4. **Validasi**: Hasil akhir digital harus dicocokkan dengan catatan manual.
-
----
-
-## 3. Laporan Hasil Akhir
-Setelah perhitungan selesai, sistem secara otomatis merangkum:
-- **Total DPT**: Jumlah seluruh warga yang terdaftar.
-- **Tingkat Partisipasi**: Jumlah pemilih yang hadir (Check-In).
-- **Total Suara Masuk**: Total kertas suara yang dihitung.
-- **Validitas**:
-    - **Suara Sah**: Total suara untuk seluruh kandidat.
-    - **Suara Tidak Sah**: Surat suara rusak atau coblos lebih dari satu.
-- **Hasil Perolehan**: Suara masing-masing kandidat.
-- **Klasemen Akhir**: Urutan kandidat dari suara terbanyak ke terkecil.
+## 3. Logika Dashboard (Public Display)
+Dashboard utama (`/dashboard`) akan beradaptasi otomatis:
+1.  **Mode Antrian**: Saat `Registration OPEN` (Pagi - Siang).
+    -   Menampilkan antrian berjalan.
+    -   Status pemanggilan.
+2.  **Mode Hasil (Tally)**: Saat `Registration CLOSED` & `Voting OPEN` (Siang).
+    -   Menampilkan grafik perolehan suara.
+    -   Statistik DPT vs Kehadiran vs Suara Sah.
 
 ---
 
@@ -68,6 +70,5 @@ Untuk menjamin integritas "Semi-Digital", sistem menerapkan:
 - [x] **Smart Sync**: Sinkronisasi data warga dengan Google Sheets.
 
 ---
-**Panitia Pemilihan RT 12**  
-*Pelem Kidul, Baturetno, Bantul*
+**Panitia Pemilihan RT 12**
 *Januari 2026*

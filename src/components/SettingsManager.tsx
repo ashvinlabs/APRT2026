@@ -32,6 +32,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
 
 interface ElectionConfig {
@@ -61,6 +63,10 @@ export default function SettingsManager() {
     const [candidates, setCandidates] = useState<Candidate[]>([]);
     const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
     const [draggedItem, setDraggedItem] = useState<number | null>(null);
+
+    function updateConfig(key: keyof ElectionConfig, value: boolean | string) {
+        setConfig(prev => ({ ...prev, [key]: value }));
+    }
 
     useEffect(() => {
         fetchSettings();
@@ -301,6 +307,37 @@ export default function SettingsManager() {
                                     placeholder="E.g. Balai RT 12 (Rumah Bapak RT)"
                                 />
                             </div>
+                        </div>
+                        <div className="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-200">
+                            <div className="space-y-0.5">
+                                <Label className="text-base font-bold text-slate-900">Buka Pendaftaran (Check-In)</Label>
+                                <p className="text-xs text-slate-500">
+                                    Aktifkan untuk memindai QR Code dan mencetak antrian. Dashboard akan menampilkan Antrian.
+                                </p>
+                            </div>
+                            <Switch
+                                checked={config.is_registration_open}
+                                onCheckedChange={(c) => updateConfig('is_registration_open', c)}
+                            />
+                        </div>
+
+                        <div className="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-200">
+                            <div className="space-y-0.5">
+                                <Label className="text-base font-bold text-slate-900">Buka Akses Voting (Tally)</Label>
+                                <p className="text-xs text-slate-500">
+                                    Aktifkan HANYA saat penghitungan suara dimulai. Dashboard akan berubah menjadi Live Tally.
+                                </p>
+                                {config.is_voting_open && config.is_registration_open && (
+                                    <p className="text-[10px] font-bold text-amber-600 mt-1 flex items-center gap-1">
+                                        <AlertTriangle size={10} />
+                                        Peringatan: Pendaftaran masih terbuka!
+                                    </p>
+                                )}
+                            </div>
+                            <Switch
+                                checked={config.is_voting_open}
+                                onCheckedChange={(c) => updateConfig('is_voting_open', c)}
+                            />
                         </div>
                         <div className="space-y-2">
                             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">Tanggal Pemilihan</label>
