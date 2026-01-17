@@ -29,6 +29,7 @@ export interface Permissions {
     manage_votes?: boolean;
     undo_vote?: boolean;
     view_dashboard?: boolean;
+    manage_queue?: boolean;
 }
 
 export interface Role {

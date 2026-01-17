@@ -36,10 +36,10 @@ export default function HomePage() {
 
   if (isLoading || !mounted) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
           <Loader2 className="w-10 h-10 animate-spin text-primary" />
-          <p className="text-sm font-bold text-slate-400 animate-pulse uppercase tracking-widest">Memuat Portal...</p>
+          <p className="text-sm font-bold text-muted-foreground animate-pulse uppercase tracking-widest">Memuat Portal...</p>
         </div>
       </div>
     );
@@ -51,8 +51,8 @@ export default function HomePage() {
       description: 'Pantau perolehan suara secara langsung dan transparan.',
       icon: LayoutDashboard,
       href: '/dashboard',
-      color: 'bg-blue-500',
-      lightColor: 'bg-blue-50'
+      color: 'bg-primary',
+      lightColor: 'bg-primary/10'
     },
     {
       title: 'Daftar Pemilih',
@@ -130,45 +130,45 @@ export default function HomePage() {
   });
 
   return (
-    <div className="min-h-screen bg-[#f8f9fc] flex flex-col">
+    <div className="min-h-screen bg-background flex flex-col">
       <PublicNavbar variant="dark" />
 
       {/* Hero Section */}
-      <div className="relative bg-slate-900 pt-32 pb-32 md:pt-48 md:pb-48">
+      <div className="relative bg-[#052e16] pt-32 pb-32 md:pt-48 md:pb-48">
         {/* Decorative background elements */}
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-full overflow-hidden pointer-events-none">
-          <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[60%] rounded-full bg-blue-600/20 blur-[120px]" />
-          <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[60%] rounded-full bg-blue-500/10 blur-[120px]" />
+          <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[60%] rounded-full bg-primary/20 blur-[120px]" />
+          <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[60%] rounded-full bg-primary/10 blur-[120px]" />
         </div>
 
         <div className="container relative z-10 px-6 mx-auto text-center">
           <div className="inline-flex items-center gap-2 px-3 py-1 mb-8 rounded-full bg-white/5 border border-white/10 backdrop-blur-md">
             <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-500 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
             </span>
             <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white/70">Sistem E-Voting Terpadu</span>
           </div>
 
           <h1 className="text-5xl md:text-7xl lg:text-8xl font-black text-white mb-6 tracking-tighter leading-[0.9]">
-            APRT<span className="text-blue-500 italic">26</span>
+            APRT<span className="text-primary italic">26</span>
           </h1>
 
-          <p className="max-w-2xl mx-auto text-lg md:text-xl text-slate-400 font-medium leading-relaxed mb-10">
+          <p className="max-w-2xl mx-auto text-lg md:text-xl text-white/60 font-medium leading-relaxed mb-10">
             Platform pemilihan elektronik RT 12 Pelem Kidul yang modern, aman, dan transparan untuk masa depan lingkungan kita.
           </p>
 
           {user && (
             <div className="flex flex-col items-center gap-4">
               <div className="flex items-center gap-4 p-2 pl-2 pr-6 rounded-full bg-white/5 border border-white/10 backdrop-blur-xl animate-in fade-in slide-in-from-bottom-4 duration-700">
-                <Avatar className="h-12 w-12 border-2 border-blue-500/20 shadow-xl shrink-0">
+                <Avatar className="h-12 w-12 border-2 border-primary/20 shadow-xl shrink-0">
                   <AvatarImage src={user.photo_url || ''} className="object-cover" />
-                  <AvatarFallback className="bg-blue-600 text-white font-bold text-lg">
+                  <AvatarFallback className="bg-primary text-primary-foreground font-bold text-lg">
                     {(user.name || 'U')[0].toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
                 <div className="text-left">
-                  <p className="text-[10px] font-black uppercase tracking-widest text-blue-400 leading-none mb-1">Selamat Datang</p>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-primary leading-none mb-1">Selamat Datang</p>
                   <p className="text-lg font-black text-white leading-none">{user.name}</p>
                 </div>
               </div>
@@ -184,13 +184,13 @@ export default function HomePage() {
               { icon: Clock, label: 'Waktu', value: '08:00 - 14:00 WIB' },
               { icon: MapPin, label: 'Lokasi', value: 'Balai Warga RT 12' },
             ].map((item, i) => (
-              <div key={i} className="flex items-center gap-4 p-5 rounded-[1.5rem] bg-white border border-slate-100 shadow-xl shadow-slate-200/50">
-                <div className="w-12 h-12 rounded-xl bg-slate-50 flex items-center justify-center text-blue-600 shrink-0">
+              <div key={i} className="flex items-center gap-4 p-5 rounded-[1.5rem] bg-card border border-border shadow-xl shadow-black/50">
+                <div className="w-12 h-12 rounded-xl bg-secondary flex items-center justify-center text-primary shrink-0">
                   <item.icon size={22} />
                 </div>
                 <div>
-                  <p className="text-[10px] font-black uppercase tracking-wider text-slate-400 leading-none mb-1">{item.label}</p>
-                  <p className="text-sm font-black text-slate-900 leading-none">{item.value}</p>
+                  <p className="text-[10px] font-black uppercase tracking-wider text-muted-foreground leading-none mb-1">{item.label}</p>
+                  <p className="text-sm font-black text-foreground leading-none">{item.value}</p>
                 </div>
               </div>
             ))}
@@ -201,8 +201,8 @@ export default function HomePage() {
       {/* Portal Content */}
       <div className="container mx-auto px-6 pt-32 pb-20 flex-1">
         <div className="text-center mb-12">
-          <h2 className="text-3xl font-black text-slate-900 tracking-tight mb-2 uppercase">Layanan <span className="text-blue-600 italic">Portal Utama</span></h2>
-          <p className="text-slate-500 font-bold">Pilih layanan yang ingin Anda akses hari ini.</p>
+          <h2 className="text-3xl font-black text-foreground tracking-tight mb-2 uppercase">Layanan <span className="text-primary italic">Portal Utama</span></h2>
+          <p className="text-muted-foreground font-bold">Pilih layanan yang ingin Anda akses hari ini.</p>
         </div>
 
         <div className={cn(
@@ -213,7 +213,7 @@ export default function HomePage() {
         )}>
           {features.map((feature, idx) => (
             <Link key={idx} href={feature.href} className="group">
-              <Card className="h-full border-none bg-white shadow-sm shadow-slate-200/50 hover:shadow-2xl hover:shadow-blue-500/10 transition-all duration-500 rounded-[2.5rem] overflow-hidden group-hover:-translate-y-2 relative border border-white hover:border-blue-500/20">
+              <Card className="h-full border-none bg-card shadow-sm shadow-black/20 hover:shadow-2xl hover:shadow-primary/10 transition-all duration-500 rounded-[2.5rem] overflow-hidden group-hover:-translate-y-2 relative border border-border hover:border-primary/20">
                 <div className={cn("absolute top-0 right-0 w-32 h-32 -mr-8 -mt-8 rounded-full blur-3xl opacity-0 group-hover:opacity-20 transition-opacity duration-500", feature.color)} />
 
                 <CardHeader className="p-8 flex flex-col items-center text-center relative z-10">
@@ -225,14 +225,14 @@ export default function HomePage() {
                     <div className={cn("absolute inset-0 rounded-[1.75rem] opacity-0 group-hover:opacity-100 transition-opacity duration-500 -z-10", feature.color)} />
                   </div>
 
-                  <CardTitle className="text-xl font-black text-slate-900 mb-3 tracking-tight group-hover:text-blue-600 transition-colors uppercase italic">{feature.title}</CardTitle>
-                  <CardDescription className="text-sm font-bold text-slate-400 leading-relaxed min-h-[48px]">
+                  <CardTitle className="text-xl font-black text-foreground mb-3 tracking-tight group-hover:text-primary transition-colors uppercase italic">{feature.title}</CardTitle>
+                  <CardDescription className="text-sm font-bold text-muted-foreground leading-relaxed min-h-[48px]">
                     {feature.description}
                   </CardDescription>
                 </CardHeader>
 
                 <div className="px-8 pb-8 flex justify-center mt-auto">
-                  <div className="flex items-center gap-2 text-blue-600 font-black text-xs uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-all duration-500 translate-y-2 group-hover:translate-y-0">
+                  <div className="flex items-center gap-2 text-primary font-black text-xs uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-all duration-500 translate-y-2 group-hover:translate-y-0">
                     Masuk Sekarang <ArrowRight size={14} />
                   </div>
                 </div>
@@ -245,17 +245,17 @@ export default function HomePage() {
       {!user && (
         <div className="container mx-auto px-6 pb-20">
           <div className="mt-20 text-center animate-in fade-in slide-in-from-bottom-8 duration-1000">
-            <div className="max-w-md mx-auto p-8 rounded-[2.5rem] bg-white border border-slate-100 shadow-xl shadow-slate-200/50">
-              <h3 className="text-xl font-black text-slate-900 mb-2 uppercase italic">Akses <span className="text-blue-600 font-black italic">Khusus Panitia</span></h3>
-              <p className="text-sm font-bold text-slate-400 mb-8 leading-relaxed">Silakan login untuk mengakses fitur manajemen dan administrasi pemilu.</p>
+            <div className="max-w-md mx-auto p-8 rounded-[2.5rem] bg-card border border-border shadow-xl shadow-black/50">
+              <h3 className="text-xl font-black text-foreground mb-2 uppercase italic">Akses <span className="text-primary font-black italic">Khusus Panitia</span></h3>
+              <p className="text-sm font-bold text-muted-foreground mb-8 leading-relaxed">Silakan login untuk mengakses fitur manajemen dan administrasi pemilu.</p>
               <div className="flex flex-col gap-3">
                 <Link href="/login" className="w-full no-underline">
-                  <Button size="lg" className="h-14 w-full rounded-2xl font-black text-lg bg-blue-600 hover:bg-blue-700 text-white shadow-xl shadow-blue-500/20 transition-all active:scale-95">
+                  <Button size="lg" className="h-14 w-full rounded-2xl font-black text-lg bg-primary hover:bg-primary/90 text-primary-foreground shadow-xl shadow-primary/20 transition-all active:scale-95">
                     Login Sekarang
                   </Button>
                 </Link>
                 <Link href="/register" className="w-full no-underline">
-                  <Button variant="ghost" size="lg" className="h-14 w-full rounded-2xl font-black text-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50">
+                  <Button variant="ghost" size="lg" className="h-14 w-full rounded-2xl font-black text-lg text-muted-foreground hover:text-primary hover:bg-primary/10">
                     Daftar Petugas Baru
                   </Button>
                 </Link>
@@ -266,22 +266,22 @@ export default function HomePage() {
       )}
 
       {/* Footer */}
-      <footer className="container mx-auto px-6 py-12 border-t border-slate-100 flex flex-col md:flex-row items-center justify-between gap-8 mt-auto">
+      <footer className="container mx-auto px-6 py-12 border-t border-border flex flex-col md:flex-row items-center justify-between gap-8 mt-auto">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-slate-900 flex items-center justify-center text-white font-black text-xl italic">A</div>
+          <div className="w-10 h-10 rounded-xl bg-card flex items-center justify-center text-primary font-black text-xl italic border border-border">A</div>
           <div>
-            <p className="text-sm font-black text-slate-900 leading-none italic uppercase">APRT<span className="text-blue-600 italic">26</span></p>
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">E-Voting Solution</p>
+            <p className="text-sm font-black text-foreground leading-none italic uppercase">APRT<span className="text-primary italic">26</span></p>
+            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-1">E-Voting Solution</p>
           </div>
         </div>
 
         <div className="text-center md:text-right hidden sm:block">
-          <p className="text-[10px] text-slate-300 font-black uppercase tracking-[0.2em] mb-1">Designed and developed by</p>
-          <p className="text-sm font-black text-slate-900 tracking-tight italic">ASHVIN <span className="text-blue-600 italic">LABS</span></p>
+          <p className="text-[10px] text-muted-foreground font-black uppercase tracking-[0.2em] mb-1">Designed and developed by</p>
+          <p className="text-sm font-black text-foreground tracking-tight italic">ASHVIN <span className="text-primary italic">LABS</span></p>
         </div>
 
         {user && (
-          <div className="flex items-center bg-white p-1 rounded-2xl border border-slate-100 shadow-sm">
+          <div className="flex items-center bg-card p-1 rounded-2xl border border-border shadow-sm">
             <LogoutButton />
           </div>
         )}

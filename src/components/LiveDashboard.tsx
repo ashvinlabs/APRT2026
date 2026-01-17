@@ -12,6 +12,7 @@ import { useUser } from './UserContext';
 interface Stats {
     total_voters: number;
     present_voters: number;
+    voted_voters: number;
     votes: {
         candidate_id: string | null;
         count: number;
@@ -85,6 +86,7 @@ export default function LiveDashboard() {
     async function refreshStats() {
         const { count: totalVoters } = await supabase.from('voters').select('*', { count: 'exact', head: true });
         const { count: presentVoters } = await supabase.from('voters').select('*', { count: 'exact', head: true }).eq('is_present', true);
+        const { count: votedVoters } = await supabase.from('voters').select('*', { count: 'exact', head: true }).eq('status', 'voted');
 
         const { data: voteData } = await supabase.from('votes').select('candidate_id, is_valid');
 
@@ -110,6 +112,7 @@ export default function LiveDashboard() {
         setStats({
             total_voters: totalVoters || 0,
             present_voters: presentVoters || 0,
+            voted_voters: votedVoters || 0,
             votes: Object.entries(voteCounts)
                 .map(([id, count]) => ({ candidate_id: id, count }))
                 .sort((a, b) => b.count - a.count), // Sort by count descending
@@ -191,12 +194,14 @@ export default function LiveDashboard() {
                 }
             `}</style>
 
+
             {/* Top Stats Row */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 shrink-0">
+            <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4 shrink-0">
                 {[
                     { label: 'Total DPT', value: stats?.total_voters, icon: Users, color: 'text-slate-600', bg: 'bg-slate-100', border: 'border-slate-200' },
                     { label: 'Hadir / Sign-in', value: stats?.present_voters, icon: UserCheck, color: 'text-blue-600', bg: 'bg-blue-50', border: 'border-blue-200' },
-                    { label: 'Suara Sah', value: stats?.total_valid_votes, icon: CheckCircle2, color: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-200' },
+                    { label: 'Sudah Mencoblos', value: stats?.voted_voters, icon: CheckCircle2, color: 'text-purple-600', bg: 'bg-purple-50', border: 'border-purple-200' },
+                    { label: 'Suara Sah', value: stats?.total_valid_votes, icon: TrendingUp, color: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-200' },
                     { label: 'Tidak Sah / Batal', value: stats?.total_invalid_votes, icon: AlertCircle, color: 'text-rose-600', bg: 'bg-rose-50', border: 'border-rose-200' }
                 ].map((item, i) => (
                     <Card key={i} className={cn("border-none shadow-xl shadow-slate-200/40 overflow-hidden transition-all duration-300 hover-premium", item.bg)}>
@@ -207,7 +212,7 @@ export default function LiveDashboard() {
                                 </div>
                                 <div className="space-y-0.5">
                                     <p className="text-3xl font-black tracking-tight text-slate-900 leading-none">{item.value}</p>
-                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{item.label}</p>
+                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-tight">{item.label}</p>
                                 </div>
                             </div>
                         </CardContent>

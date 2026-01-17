@@ -136,9 +136,17 @@ export default function VoterManagement() {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
 
+        // Update status and timestamp for Queue System
+        // If checking in: status='checked_in', queue_timestamp=now
+        // If unchecking: status='registered', queue_timestamp=null
+        const now = new Date().toISOString();
+        const updates = !currentStatus
+            ? { is_present: true, status: 'checked_in', queue_timestamp: now, present_at: now }
+            : { is_present: false, status: 'registered', queue_timestamp: null, present_at: null, skip_count: 0 };
+
         const { error } = await supabase
             .from('voters')
-            .update({ is_present: !currentStatus })
+            .update(updates)
             .eq('id', voterId);
 
         if (!error) {
@@ -154,8 +162,8 @@ export default function VoterManagement() {
                     voter_name: voter?.name,
                     voter_code: voter?.invitation_code,
                     detail: !currentStatus
-                        ? `Tandai Kehadiran Pemilih: ${voter?.name} Kode: ${voter?.invitation_code}`
-                        : `Batalkan Kehadiran Pemilih: ${voter?.name} Kode: ${voter?.invitation_code}`
+                        ? `Tandai Kehadiran: ${voter?.name} (Masuk Antrian)`
+                        : `Batal Hadir: ${voter?.name} (Hapus dari Antrian)`
                 },
                 voterId
             );

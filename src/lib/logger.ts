@@ -28,7 +28,11 @@ export type LogAction =
     | 'update_profile'
     | 'print_invitation'
     | 'bulk_print_invitations'
-    | 'manual_cleanup';
+    | 'manual_cleanup'
+    | 'call_voter'
+    | 'mark_voted'
+    | 'skip_voter'
+    | 'recall_voter';
 
 export type LogGroup = keyof Permissions | 'system';
 

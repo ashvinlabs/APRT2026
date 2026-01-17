@@ -543,6 +543,51 @@ export default function SettingsManager() {
                     </div>
                 </div>
             )}
+
+            {/* DANGER ZONE - Only visible to Super Admin logically (secured by RPC) */}
+            <Card className="border-none shadow-xl shadow-rose-100/50 rounded-[2.5rem] overflow-hidden bg-rose-50/50 ring-1 ring-rose-100 mt-12">
+                <CardHeader className="p-8 border-b border-rose-100">
+                    <CardTitle className="text-xl font-black text-rose-900 flex items-center gap-2">
+                        <AlertTriangle size={20} className="text-rose-600" />
+                        Danger Zone
+                    </CardTitle>
+                    <CardDescription className="text-rose-700/80">Tindakan destruktif yang tidak dapat dibatalkan.</CardDescription>
+                </CardHeader>
+                <CardContent className="p-8">
+                    <div className="flex flex-col md:flex-row items-center justify-between gap-6 bg-white p-6 rounded-3xl border border-rose-100 shadow-sm">
+                        <div>
+                            <h4 className="font-bold text-slate-900 mb-1">Reset Data Pemilihan</h4>
+                            <p className="text-sm text-slate-500 max-w-md">
+                                Menghapus SEMUA Log Aktivitas, Riwayat Voting, dan Reset Status Kehadiran Pemilih.
+                                Data kandidat dan akun petugas TIDAK akan dihapus.
+                            </p>
+                        </div>
+                        <Button
+                            variant="destructive"
+                            onClick={async () => {
+                                if (confirm('⚠️ PERINGATAN KERAS: Aksi ini akan MENGHAPUS SEMUA SUARA dan LOG AKTIVITAS.\n\nApakah Anda YAKIN ingin mereset data pemilihan?')) {
+                                    if (confirm('Konfirmasi terakhir: Data yang dihapus TIDAK DAPAT DIKEMBALIKAN. Lanjutkan?')) {
+                                        setSaving(true);
+                                        const { error } = await supabase.rpc('reset_election_data');
+                                        setSaving(false);
+                                        if (error) {
+                                            setMessage({ type: 'error', text: 'Gagal reset data: ' + error.message });
+                                        } else {
+                                            setMessage({ type: 'success', text: 'Data pemilihan berhasil di-reset!' });
+                                            // Optional: reload page to clear any cached states
+                                            window.location.reload();
+                                        }
+                                    }
+                                }
+                            }}
+                            className="bg-rose-600 hover:bg-rose-700 text-white rounded-xl h-12 px-6 font-bold shadow-lg shadow-rose-200"
+                        >
+                            <Trash2 size={18} className="mr-2" />
+                            Reset Data Pemilihan
+                        </Button>
+                    </div>
+                </CardContent>
+            </Card>
         </div>
     );
 }

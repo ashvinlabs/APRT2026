@@ -45,10 +45,10 @@ export default function TallyInterface() {
                 })
                 .subscribe(),
 
-            // 2. Voters (Presence Count)
+            // 2. Voters (Queue Voted Count)
             supabase.channel('voters_tally')
                 .on('postgres_changes', { event: '*', schema: 'public', table: 'voters' }, () => {
-                    fetchPresenceCount();
+                    fetchQueueVotedCount();
                 })
                 .subscribe(),
 
@@ -97,7 +97,7 @@ export default function TallyInterface() {
         await Promise.all([
             fetchCandidates(),
             fetchSettings(),
-            fetchPresenceCount(),
+            fetchQueueVotedCount(),
             fetchVoteCounts()
         ]);
         setLoading(false);
@@ -113,10 +113,7 @@ export default function TallyInterface() {
         setCandidates(data || []);
     }
 
-    async function fetchPresenceCount() {
-        const { count } = await supabase.from('voters').select('*', { count: 'exact', head: true }).eq('is_present', true);
-        setTotalPresent(count || 0);
-    }
+
 
     async function fetchVoteCounts() {
         const { data: votes } = await supabase.from('votes').select('candidate_id, is_valid');
@@ -139,6 +136,11 @@ export default function TallyInterface() {
             setInvalidVotes(invalid);
             setTotalVotes(total);
         }
+    }
+
+    async function fetchQueueVotedCount() {
+        const { count } = await supabase.from('voters').select('*', { count: 'exact', head: true }).eq('status', 'voted');
+        setTotalPresent(count || 0); // Using setTotalPresent to reuse existing state variable for the limit, but now it represents 'Total Voted in Queue'
     }
 
     async function recordVote(candidateId: string | null, isValid: boolean = true) {
@@ -388,7 +390,7 @@ export default function TallyInterface() {
                     <CheckCircle2 size={32} className="text-white animate-bounce" />
                     <div>
                         <p className="font-black uppercase tracking-[0.2em] text-sm">Penghitungan Selesai</p>
-                        <p className="text-xs font-bold opacity-90">Jumlah suara masuk ({totalVotes}) telah mencapai batas kehadiran pemilih ({totalPresent}).</p>
+                        <p className="text-xs font-bold opacity-90">Jumlah suara masuk ({totalVotes}) telah mencapai batas jumlah pemilih yang sudah status 'Voted' di Antrian ({totalPresent}).</p>
                     </div>
                 </div>
             )}

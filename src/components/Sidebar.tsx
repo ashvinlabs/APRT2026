@@ -19,6 +19,7 @@ import {
     ChevronDown,
     ChevronLeft,
     Menu,
+    Megaphone,
     UserCircle
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -50,6 +51,7 @@ const menuItems: MenuItem[] = [
     { name: 'Beranda', icon: Home, href: '/' },
     { name: 'Dashboard', icon: LayoutDashboard, href: '/dashboard' },
     { name: 'Check-In', icon: UserCheck, href: '/panitia/check-in', permission: 'check_in' },
+    { name: 'Antrian', icon: Megaphone, href: '/panitia/queue', permission: 'manage_queue' },
     { name: 'Data Pemilih', icon: Users, href: '/panitia/voters', permission: 'view_voter_details' },
     { name: 'Hitung Suara', icon: Vote, href: '/panitia/tally', permission: 'manage_votes' },
     { name: 'Cetak Undangan', icon: Printer, href: '/panitia/invitations', permission: 'print_invitation' },
@@ -119,8 +121,12 @@ export default function Sidebar() {
                     {isOpen ? (
                         <div className="flex items-center justify-between w-full">
                             <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-lg bg-primary flex items-center justify-center text-white font-bold">
-                                    A
+                                <div className="relative w-10 h-10">
+                                    <img
+                                        src="/images/logo.png"
+                                        alt="APRT26 Logo"
+                                        className="object-contain w-full h-full"
+                                    />
                                 </div>
                                 <div>
                                     <h2 className="text-lg font-black text-slate-900 leading-tight">

@@ -18,47 +18,47 @@ export default function PublicNavbar({ variant = 'light' }: PublicNavbarProps) {
         <nav className={cn(
             "fixed top-0 left-0 w-full z-50 px-6 h-20 flex items-center justify-between backdrop-blur-xl border-b",
             isDark
-                ? "bg-slate-900/50 border-white/5"
-                : "bg-white/80 border-slate-200/60"
+                ? "bg-background/80 border-white/5"
+                : "bg-background/80 border-border"
         )}>
             <div className="flex items-center gap-3">
                 <Link href="/" className="flex items-center gap-3 no-underline group">
-                    <div className="w-9 h-9 rounded-xl bg-blue-600 flex items-center justify-center text-white font-black text-lg italic shadow-lg shadow-blue-600/20 group-hover:scale-110 transition-transform">A</div>
-                    <span className={cn(
-                        "text-sm font-black italic tracking-tighter uppercase hidden sm:block",
-                        isDark ? "text-white" : "text-slate-900"
-                    )}>
-                        APRT<span className="text-blue-600 italic">26</span>
-                    </span>
+                    <div className="relative w-32 h-12 transition-transform group-hover:scale-105">
+                        <img
+                            src="/images/logo.png"
+                            alt="APRT26 Logo"
+                            className="object-contain w-full h-full"
+                        />
+                    </div>
                 </Link>
             </div>
 
             <div className={cn(
                 "hidden md:flex items-center gap-1 p-1 rounded-2xl border",
-                isDark ? "bg-white/5 border-white/10" : "bg-slate-100 border-slate-200/60"
+                "bg-secondary/50 border-border"
             )}>
                 <Link href="/">
                     <Button variant="ghost" size="sm" className={cn(
                         "rounded-xl font-bold transition-all h-9 px-4",
-                        isDark ? "text-white hover:bg-white/10" : "text-slate-600 hover:text-blue-600 hover:bg-white"
+                        "text-muted-foreground hover:text-primary hover:bg-background/50"
                     )}>Beranda</Button>
                 </Link>
                 <Link href="/dashboard">
                     <Button variant="ghost" size="sm" className={cn(
                         "rounded-xl font-bold transition-all h-9 px-4",
-                        isDark ? "text-white/70 hover:text-white hover:bg-white/10" : "text-slate-600 hover:text-blue-600 hover:bg-white"
+                        "text-muted-foreground hover:text-primary hover:bg-background/50"
                     )}>Dashboard</Button>
                 </Link>
                 <Link href="/check-dpt">
                     <Button variant="ghost" size="sm" className={cn(
                         "rounded-xl font-bold transition-all h-9 px-4",
-                        isDark ? "text-white/70 hover:text-white hover:bg-white/10" : "text-slate-600 hover:text-blue-600 hover:bg-white"
+                        "text-muted-foreground hover:text-primary hover:bg-background/50"
                     )}>Cek DPT</Button>
                 </Link>
                 <Link href="/about">
                     <Button variant="ghost" size="sm" className={cn(
                         "rounded-xl font-bold transition-all h-9 px-4",
-                        isDark ? "text-white/70 hover:text-white hover:bg-white/10" : "text-slate-600 hover:text-blue-600 hover:bg-white"
+                        "text-muted-foreground hover:text-primary hover:bg-background/50"
                     )}>Tentang</Button>
                 </Link>
             </div>
@@ -67,22 +67,22 @@ export default function PublicNavbar({ variant = 'light' }: PublicNavbarProps) {
                 {user ? (
                     <div className={cn(
                         "flex items-center gap-3 px-3 py-1.5 rounded-xl border",
-                        isDark ? "bg-white/5 border-white/10" : "bg-white border-slate-200 shadow-sm"
+                        "bg-card border-border shadow-sm"
                     )}>
-                        <Avatar className="h-8 w-8 border border-blue-500/20">
+                        <Avatar className="h-8 w-8 border border-primary/20">
                             <AvatarImage src={user.photo_url || ''} className="object-cover" />
-                            <AvatarFallback className="bg-blue-600 text-white font-bold text-xs uppercase">
+                            <AvatarFallback className="bg-primary text-primary-foreground font-bold text-xs uppercase">
                                 {(user.name || 'U')[0]}
                             </AvatarFallback>
                         </Avatar>
                         <span className={cn(
                             "text-xs font-bold hidden lg:block",
-                            isDark ? "text-white" : "text-slate-900"
+                            "text-foreground"
                         )}>{user.name}</span>
                     </div>
                 ) : (
                     <Link href="/login">
-                        <Button size="sm" className="px-5 rounded-xl font-bold bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-600/20">
+                        <Button size="sm" className="px-5 rounded-xl font-bold bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20">
                             Login
                         </Button>
                     </Link>
